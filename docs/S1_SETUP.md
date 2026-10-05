@@ -6,7 +6,11 @@ How to get the prototype scripts running once the Unity project exists (see READ
 
 Install **Input System** from Package Manager. When Unity asks to enable the new input backend, accept (it restarts the editor). Set *Active Input Handling* to **Input System Package (New)** or **Both**.
 
-## Scene
+## Scene (the easy way)
+
+In the Unity menu bar choose **Badeland > Create S1 Test Scene**. It builds the ground, jump test blocks, the player and the camera, and saves `Assets/_Project/Scenes/Levels/Graybox_S1.unity`. Press Play. Skip to "Controls" below.
+
+## Scene (by hand, if you prefer)
 
 1. New scene in `Assets/_Project/Scenes/Levels/Graybox_S1`.
 2. **Ground:** a large cube or plane. Add a few boxes at different heights to test jumping.
