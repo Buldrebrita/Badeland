@@ -74,4 +74,4 @@ Planned: Steamworks account and app, Steamworks.NET (or Facepunch.Steamworks) in
 
 ## Status
 
-Pre-production. Design, tech decisions, roadmap and the vertical slice spec are written. No gameplay yet.
+Pre-production. Design, tech decisions, roadmap and the vertical slice spec are written. First prototype scripts (character controller, isometric camera, fish carrying) are in `Assets/_Project/Scripts`, untested until the Unity project is created. See [docs/S1_SETUP.md](docs/S1_SETUP.md).

@@ -61,6 +61,21 @@ The waterpark course is a **circuit** the party runs two or three times (lap cou
 - Rule of thumb: lap 1 is normal, lap 2 has a few small oddities, lap 3 has more of them. Escalate gently, and always keep it deniable. Each change has a plausible innocent explanation.
 - These are the game's only foreshadowing (see section 8): the *mood* stays cheerful, the *monster itself* is still a complete surprise, and players only understand the clues in hindsight.
 - Technically, drive the changes from a per-lap data asset (list of objects to toggle, move or retint per lap) so designers can add them without code.
+
+**Draft list of per-lap changes for the slice course** (creative first pass, to be tested and pruned):
+
+| Spot | Lap 1 | Lap 2 | Lap 3 |
+|---|---|---|---|
+| Start plaza lifeguard chair | Empty | Empty, but a towel is on it | Someone's sunglasses on the towel, chair a little turned toward the water |
+| Rotating bars | Two bars | Two bars | Two bars, but a faint third shadow under the water, same place the fish keep jumping from |
+| Water | Bright turquoise | Very slightly darker | Slightly darker still, a lone big ripple with no fish near it |
+| Background guests (cardboard-cutout style crowd) | Full crowd | A few gaps | Noticeably fewer, all facing the pool |
+| Park signs | "Splash Zone!" | "Splash Zone!" | "Splash Zone!" with one letter fading or missing |
+| Inflatable crocodile | Sits in the pool | Sits a bit nearer the course | Gone, with a flattened inflatable where it was |
+| Fish | Jump normally | One fish jumps the wrong way | Fish jump in a rush, away from the platform |
+| Music | Happy tune | Same, one off-key note once | Same, a tiny slowdown on one lap-end jingle |
+| Floating platform (seen in the distance) | Plain | Plain | A bit lower in the water, as if something is under it |
+
 - The final lap ends on the floating platform and the party celebration, which is where the monster strikes (section 8).
 
 ### Jumping fish
@@ -198,7 +213,7 @@ Fully 3D environments seen from an elevated, angled-down isometric / three-quart
 - [ ] Single-player companion approach for co-op puzzles
 - [x] Lap count: 3
 - [x] Held-fish rules: one at a time, slippery (slides out after a while), can be thrown at another player
-- [ ] The actual list of per-lap changes for the slice course
+- [ ] Finalise the per-lap changes list (draft in section 4b)
 - [ ] Full fish roster and exact slip-away times
 - [x] Subtle clues: yes, as small per-lap differences
 - [ ] Performance targets and minimum PC spec
