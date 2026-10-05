@@ -10,9 +10,9 @@ namespace Badeland.Player
     public class MovementSettings : ScriptableObject
     {
         [Header("Run")]
-        [Min(0f)] public float maxSpeed = 7f;
-        [Min(0f)] public float acceleration = 45f;
-        [Min(0f)] public float deceleration = 55f;
+        [Min(0f)] public float maxSpeed = 11f;
+        [Min(0f)] public float acceleration = 70f;
+        [Min(0f)] public float deceleration = 80f;
         [Tooltip("Degrees per second the character turns to face its movement direction.")]
         [Min(0f)] public float turnRate = 720f;
 

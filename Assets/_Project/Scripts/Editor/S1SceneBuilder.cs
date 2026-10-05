@@ -115,20 +115,32 @@ namespace Badeland.EditorTools
             Directory.CreateDirectory(MaterialFolder);
             string path = MaterialFolder + "/M_Graybox_" + ColorUtility.ToHtmlStringRGB(color) + ".mat";
 
+            var renderer = go.GetComponent<Renderer>();
             var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (mat == null)
             {
-                Shader shader = Shader.Find("Universal Render Pipeline/Lit");
-                if (shader == null) shader = Shader.Find("Standard");
-                if (shader == null) return; // leave the primitive's default material in place
+                // Copy the material Unity itself gave this new primitive. That is always valid for the
+                // render pipeline the project uses, so we never have to guess a shader name.
+                Material source = renderer.sharedMaterial;
+                if (source != null)
+                {
+                    mat = new Material(source);
+                }
+                else
+                {
+                    Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+                    if (shader == null) shader = Shader.Find("Standard");
+                    if (shader == null) return;
+                    mat = new Material(shader);
+                }
 
-                mat = new Material(shader);
                 if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
                 if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
                 AssetDatabase.CreateAsset(mat, path);
+                Debug.Log("Badeland: created material " + path + " using shader " + mat.shader.name);
             }
 
-            go.GetComponent<Renderer>().sharedMaterial = mat;
+            renderer.sharedMaterial = mat;
         }
     }
 }
