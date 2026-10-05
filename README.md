@@ -2,18 +2,19 @@
 
 *(working title)*
 
-A funny, all-ages 3D action-platformer with an isometric camera. Explore a small semi-open hub world, enter themed levels, and collect what you need to reach one big final goal. The comedy comes from slapstick physics and characters, not violence.
+A colourful, funny, 1 to 4 player co-op adventure for PC. It starts in a giant waterpark full of slides, inflatable obstacle courses, hidden traps and treasures. At the end, the lights go out, a sea monster rises from the water and swallows everyone. They wake up inside it, in a strange world with a mystery to solve.
 
-> Storyline, characters and setting are still to be decided. See [docs/DESIGN.md](docs/DESIGN.md).
+> Design: [docs/DESIGN.md](docs/DESIGN.md) · Tech: [docs/TECH.md](docs/TECH.md) · Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md) · First playable: [docs/VERTICAL_SLICE.md](docs/VERTICAL_SLICE.md)
 
 ## At a glance
 
 | | |
 |---|---|
-| Genre | 3D action-platformer, hub world + levels |
-| Camera | Isometric (fixed angle) |
-| Look | High-poly, cartoon style, PBR materials and rendering |
-| Tone | Funny, slapstick, suitable for all ages |
+| Genre | 3D co-op action-platformer / adventure, waterpark levels then a fantasy world |
+| Players | Single-player and online co-op, 1 to 4 |
+| Camera | Elevated isometric / three-quarter view in full 3D |
+| Look | High-poly stylised cartoon, PBR materials and rendering |
+| Tone | Funny and colourful, then mysterious and slightly scary |
 | Engine | Unity (Unity 6 LTS, Universal Render Pipeline) |
 | Target | PC first (Steam), other storefronts later |
 
@@ -73,4 +74,4 @@ Planned: Steamworks account and app, Steamworks.NET (or Facepunch.Steamworks) in
 
 ## Status
 
-Project skeleton only. No gameplay yet.
+Pre-production. Design, tech decisions, roadmap and the vertical slice spec are written. No gameplay yet.

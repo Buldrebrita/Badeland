@@ -1,100 +1,151 @@
 # Badeland: Design Document
 
-**Status:** draft v0.1. Working title. Storyline, protagonist and setting are intentionally undecided (see [Open decisions](#open-decisions)).
+**Status:** draft v0.2. Working title: BADELAND. Source: the project brief. Sibling docs: [TECH.md](TECH.md), [ROADMAP.md](ROADMAP.md), [VERTICAL_SLICE.md](VERTICAL_SLICE.md).
 
 ## 1. Vision
 
-A funny, welcoming 3D action-platformer for all ages. The player explores a small semi-open hub world, enters themed levels, collects what each one rewards, and uses those rewards to reach a single, visible final goal. The game should make people laugh out loud and want to show others what just happened.
+A colourful, funny, 1 to 4 player co-op adventure that starts in a giant waterpark and turns, at the end of the first chapter, into something very different. Players fight their way across the park to a floating inflatable platform, the lights go out, an enormous sea monster attacks, and it swallows them. They wake up inside the creature, in a strange fantasy world with a mystery to uncover.
 
-## 2. Design pillars
+**Target reaction after the first session:** *"What the hell just happened? I need to play the next part."*
 
-1. **Funny first.** Humor comes from physics, animation, reactions and characters. If a moment isn't funny or charming, we cut or rework it.
-2. **Playful, not punishing.** Failure is slapstick, not violence. No gore, no death, and a short, quick return to play after a mishap.
-3. **Great movement.** Moving the character around should feel good on its own. Everything else is built on that.
-4. **Readable at a glance.** The isometric view must always show where the player is, what is dangerous and where to go next.
-5. **All ages.** Easy to pick up, with depth for players who want a challenge. Content is family-friendly.
+## 2. Priorities (in order)
+
+1. Fun gameplay
+2. Good controls
+3. Readable camera
+4. Multiplayer foundation
+5. Level design
+6. Replayability
+7. Art quality
+8. Audio
+9. Story
+10. Polish
+
+Rule of thumb: do not make beautiful assets for a mechanic that has not been proven fun. Placeholders first.
 
 ## 3. Structure
 
-### Hub world
-- Small, semi-open, and explorable in any order.
-- The **final goal is visible from the start**, so players always know what they're working toward.
-- Holds the entrances to each level, friendly characters, small secrets and light puzzles.
-- Gates on the path to the goal open as the player collects level rewards.
+The game is split into **chapters**. This keeps scope realistic and lets chapter 1 stand as a complete, shippable experience.
 
-### Levels
-- Target for the first full version: **4 to 6 themed levels**, each short enough to finish in 10 to 20 minutes.
-- Each level has one **signature gimmick**, a few set pieces, hazards and an optional secret.
-- Each level ends with a **reward** that counts toward opening the way to the goal.
+### Chapter 1: The Waterpark
 
-### Goal
-- One final area or event, unlocked when enough rewards are collected.
-- Ends with a short, memorable finale.
+| Area | Mood | Content |
+|---|---|---|
+| 1. Main Waterpark | Bright, loud, safe | Giant pools, slides, wave pool, kids' play areas, inflatable obstacles, water cannons, bridges, climbing structures |
+| 2. The Forgotten Section | Older, quieter, slightly off | Abandoned part of the park, first hints that something is wrong |
+| 3. Underground | Industrial, tense | Maintenance tunnels, pipes, machinery, hidden rooms |
+| 4. The Final Pool | Calm, then very not calm | Floating inflatable platform, the monster encounter, the swallow |
 
-## 4. Core gameplay
+### Chapter 2: Inside the Monster
 
-- Third-person character control relative to the isometric camera.
-- Core moves (to be tuned): run, jump (with variable height), a signature action, and interact.
-- Game-feel details: coyote time, jump buffering, forgiving ledges, generous camera.
-- Physics-driven slapstick: bouncy landings, topples, launches, things reacting to the player.
-- Hazards and enemies are comedic obstacles that knock the player back, not kill them.
-- Checkpoints are frequent; "failing" returns the player to the last one with a funny animation.
+A much larger fantasy adventure in a surreal ecosystem (see section 9). Treated as a separate, later production block. Chapter 1 ends on the cliffhanger.
 
-## 5. Camera and presentation
+## 4. Core mechanics
 
-- Fixed-angle **isometric** camera (orthographic or narrow-FOV perspective, decided in prototype).
-- Camera follows the player with smoothing and gentle look-ahead.
-- Occlusion handling: fade or cut away geometry that hides the player (shader-based).
-- Optional limited camera rotation (for example 90-degree steps) to fix hidden spots. To be tested.
+- **Movement:** run, variable-height jump, swim (surface and short dives), slide, climb, balance, carry and throw objects, interact.
+- **Water:** buoyancy volumes, currents, splashes, wet-surface visuals. Not a fluid simulation.
+- **Inflatables:** bouncy, wobbly, squashy surfaces that are a core source of slapstick.
+- **Environmental puzzles:** small, readable, usually solvable in under a minute solo.
+- **Failure:** comedic and quick. Fall in, get launched, respawn at a nearby checkpoint. No gore, no real death.
 
-## 6. Art direction
+## 5. Hidden traps and treasure
 
-- **High-poly, cartoon style** with **PBR** materials and rendering.
-- Stylization comes from exaggerated proportions, chunky shapes, bright palettes and expressive animation, with physically based lighting underneath.
-- Strong silhouettes and clear color coding for gameplay (safe, dangerous, interactive).
-- Expressive, squash-and-stretch character animation.
-- Performance budget to be set after the first vertical-slice scene.
+Core loop: **EXPLORE -> FIND SECRET -> GET TREASURE -> ESCAPE**
 
-## 7. Audio direction
+Traps are not always obvious. They can be disguised as props, triggered by stepping or interacting, hidden behind decorations or on optional paths, and revealed only after exploring.
 
-- Music that is bouncy and varied per level.
-- Exaggerated, funny sound effects. Sound carries a lot of the comedy.
-- Optional voiced or gibberish characters and a narrator. To be decided with the storyline.
+Example: a suspicious inflatable object. The player investigates, the floor opens, they fall into a secret room with a treasure. Taking the treasure triggers a mechanism, and now they have to escape.
 
-## 8. Technical plan
+Trap archetypes to build first (reuse and vary them rather than inventing dozens):
 
-| Area | Plan |
+1. Trapdoor / floor drop into a secret room
+2. Pressure plate that triggers something elsewhere
+3. Decoy prop (looks like a pickup or a toy)
+4. Interact-to-trigger (valve, lever, tap)
+5. Timed escape (rising water, closing door, deflating floor)
+
+Fairness rules: traps are survivable, always teach through a first harmless instance, never remove progress, and reset or reward quickly. Treasure rooms are optional, never required to finish the level.
+
+## 6. Multiplayer
+
+- Single-player and online co-op, 1 to 4 players.
+- **Solo must be fun.** Every co-op mechanic needs a solo-friendly version (for example a weighted object instead of a second player holding a button).
+- Co-op mechanics: hold-a-button-while-another-crosses, throwing objects or players to each other, rescuing teammates from traps, two-player mechanisms, push/pull together, boosting each other up climbs, splitting up on branching paths.
+- Emergent chaos: players can accidentally trigger traps on friends. It should be funny, not griefing. Rescues are always quick, and players can opt out of player-affecting traps.
+- Camera framing for several players is a design constraint, not an afterthought (see TECH.md).
+
+## 7. Replayability
+
+Every level has several reasons to return:
+
+| Playthrough | Goal |
 |---|---|
-| Engine | Unity 6 LTS, Universal Render Pipeline (URP) |
-| Language | C# |
-| Input | Unity Input System (keyboard/mouse and gamepad) |
-| Physics | Unity physics, with custom character controller for movement feel |
-| Camera | Cinemachine |
-| Materials | URP Lit (PBR) plus Shader Graph for stylization and occlusion fade |
-| Platforms | PC (Windows) first for Steam; macOS/Linux and consoles evaluated later |
-| Store integration | Steamworks (achievements, cloud saves, Steam Deck support) |
-| Version control | Git with Git LFS |
+| 1st | Complete the level |
+| 2nd | Find hidden treasures |
+| 3rd | Find secret rooms |
+| 4th | Fastest time |
 
-## 9. Milestones
+Ranking: 1 star completed, 2 stars good performance, 3 stars perfect performance. Optional collectibles and secrets per level. Each level should leave the player thinking "I know I missed something."
 
-1. **Prototype:** player controller and isometric camera in a gray-box test scene. Prove the movement feels good.
-2. **Vertical slice:** one polished hub area and one complete level with final art, audio, hazards and the reward loop.
-3. **Content:** remaining levels, full hub, the final goal and finale.
-4. **Polish and release prep:** playtests, performance, accessibility options, Steam store page, trailer, achievements, release build.
+## 8. The monster encounter (end of Chapter 1)
 
-## 10. Accessibility and audience
+Beats:
 
-- Remappable controls, gamepad support, adjustable camera and difficulty options.
-- Subtitles and clear visual cues for important sounds.
-- Avoid flashing effects. Offer a reduced-motion option.
-- Rating target: suitable for all ages.
+1. **Calm.** The party arrives on a large floating inflatable platform in the Final Pool. A moment of celebration.
+2. **Wrongness.** Music thins out, the lights go down, the water darkens, a low sound from below.
+3. **Attack.** Tentacles and strikes from beneath the water. Players dodge and fight back with objects collected earlier or found on the platform.
+4. **Escalation.** The monster is far bigger than the players. The platform shrinks, tilts or deflates.
+5. **Unwinnable.** The fight turns. The monster swallows everyone.
+6. **Cut to black.**
 
-## Open decisions
+Tone: scary for a moment to a child, still inside a colourful adventure. Cartoon-like but intimidating, not extreme horror.
 
-- [ ] **Storyline, protagonist and setting** (to be provided by the project owner).
-- [ ] Final game title.
-- [ ] Signature action for the character.
-- [ ] Number of levels and each level's theme and gimmick.
-- [ ] Camera rotation: fixed, or limited steps.
-- [ ] Single player only, or local co-op.
-- [ ] Performance targets and minimum PC spec.
+Design notes: the fight is scripted in phases with generous checkpoints; the swallow is a scripted cinematic, not a failure state.
+
+Monster design direction: gigantic aquatic creature, tentacles, huge eyes, giant mouth, bioluminescent details, strange organic textures.
+
+## 9. Inside the monster (Chapter 2)
+
+Not a stomach. A surreal fantasy ecosystem: giant caves, bioluminescent forests, rivers, mountains, floating islands, strange villages, ancient ruins, organic structures, underground oceans, strange creatures, lost human settlements. Mysterious, strange, beautiful, slightly unsettling.
+
+**Questions the player should come to ask, gradually:**
+
+- What is this creature, and how long has it existed?
+- Why is there a whole world inside it, and who built these structures?
+- Why does it eat people, and for how long has this been happening?
+- Who else is trapped here, and has anyone escaped?
+- Is the monster actually the villain?
+
+**Reveal rules:** never explain everything up front. Use notes, symbols, environmental storytelling, NPC dialogue, lost equipment, ancient structures, paintings, hidden rooms, remains of earlier expeditions.
+
+Answers to the questions above are an open story decision (see section 13).
+
+## 10. Visual direction
+
+- **High-poly stylised cartoon 3D.** Not low-poly, not realistic. Substantial geometric detail with an appealing stylised look.
+- PBR materials and lighting, high-quality shadows, ambient occlusion, reflections, water shaders, wet surfaces, selective subsurface-style effects, volumetric-style effects where they help.
+- Characters: cute, expressive, exaggerated proportions, readable from the isometric camera, good up close. No photorealistic humans.
+- The waterpark: bright, saturated, energetic, safe, strong colour variation between areas.
+- The interior: gradually mysterious, atmospheric, beautiful, slightly unsettling.
+- The contrast between the two worlds is the game's identity.
+- Reference images are for visual direction only. Original designs only, no copyrighted characters, logos or environments.
+
+## 11. Camera
+
+Fully 3D environments seen from an elevated, angled-down isometric / three-quarter view, not a strict old-school isometric look. Smooth follow, with dynamic adjustment: pull back for big encounters, move closer in tight spaces, change angle for cinematics. Must always keep the player, hazards, platforms, teammates and key interactables visible.
+
+## 12. Audio and progression
+
+**Audio:** the waterpark has happy music, water, slides, family ambience, funny effects, mechanical sounds and cartoon impacts. In the monster sequence the music fades, the water goes quiet, low underwater sounds and distant creature noises build, with large impacts. Inside the monster: echoes, strange creatures, organic sounds, mysterious music.
+
+**Progression:** cosmetics are the primary long-term reward (outfits, hats, backpacks, inflatable gear, emotes, floating mats, trails and effects, collectibles). No pay-to-win.
+
+## 13. Open decisions
+
+- [ ] Final title (the brief mentions another name once; confirm BADELAND)
+- [ ] Protagonists: custom characters, fixed cast, or both
+- [ ] Answers to the story mystery, and how Chapter 2 ends
+- [ ] Release model: Chapter 1 as a full game with a sequel/update, or Early Access
+- [ ] Whether co-op uses one shared camera only, or limited split-screen for split paths
+- [ ] Single-player companion approach for co-op puzzles
+- [ ] Performance targets and minimum PC spec
