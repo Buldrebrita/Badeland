@@ -14,11 +14,11 @@ namespace Badeland.CameraSystem
         [SerializeField] List<Transform> targets = new List<Transform>();
 
         [Header("Angle")]
-        [Range(30f, 70f)] [SerializeField] float pitch = 50f;
+        [Range(20f, 70f)] [SerializeField] float pitch = 30f;
         [SerializeField] float yaw = 45f;
 
         [Header("Distance")]
-        [Min(1f)] [SerializeField] float baseDistance = 14f;
+        [Min(1f)] [SerializeField] float baseDistance = 18f;
         [Tooltip("Extra distance per metre the targets are spread apart.")]
         [Min(0f)] [SerializeField] float spreadZoom = 0.9f;
         [Min(1f)] [SerializeField] float maxDistance = 30f;
