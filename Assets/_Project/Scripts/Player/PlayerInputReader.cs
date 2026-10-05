@@ -14,6 +14,7 @@ namespace Badeland.Player
         public Vector2 Move { get; private set; }
         public bool JumpPressed { get; private set; }
         public bool JumpHeld { get; private set; }
+        public bool DiveHeld { get; private set; }
         public bool ThrowPressed { get; private set; }
         public bool DropPressed { get; private set; }
         public bool InteractPressed { get; private set; }
@@ -24,7 +25,7 @@ namespace Badeland.Player
             var pad = Gamepad.current;
 
             Vector2 move = Vector2.zero;
-            bool jumpDown = false, jumpHeld = false, throwDown = false, dropDown = false, interactDown = false;
+            bool jumpDown = false, jumpHeld = false, diveHeld = false, throwDown = false, dropDown = false, interactDown = false;
 
             if (kb != null)
             {
@@ -34,6 +35,7 @@ namespace Badeland.Player
                 if (kb.aKey.isPressed || kb.leftArrowKey.isPressed) move.x -= 1f;
                 jumpDown |= kb.spaceKey.wasPressedThisFrame;
                 jumpHeld |= kb.spaceKey.isPressed;
+                diveHeld |= kb.leftCtrlKey.isPressed || kb.cKey.isPressed;
                 throwDown |= kb.fKey.wasPressedThisFrame;
                 dropDown |= kb.qKey.wasPressedThisFrame;
                 interactDown |= kb.eKey.wasPressedThisFrame;
@@ -44,6 +46,7 @@ namespace Badeland.Player
                 move += pad.leftStick.ReadValue();
                 jumpDown |= pad.buttonSouth.wasPressedThisFrame;
                 jumpHeld |= pad.buttonSouth.isPressed;
+                diveHeld |= pad.leftShoulder.isPressed || pad.leftTrigger.isPressed;
                 throwDown |= pad.buttonWest.wasPressedThisFrame;
                 dropDown |= pad.buttonNorth.wasPressedThisFrame;
                 interactDown |= pad.buttonEast.wasPressedThisFrame;
@@ -52,6 +55,7 @@ namespace Badeland.Player
             Move = Vector2.ClampMagnitude(move, 1f);
             JumpPressed = jumpDown;
             JumpHeld = jumpHeld;
+            DiveHeld = diveHeld;
             ThrowPressed = throwDown;
             DropPressed = dropDown;
             InteractPressed = interactDown;

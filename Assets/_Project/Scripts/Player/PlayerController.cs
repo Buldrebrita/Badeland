@@ -1,12 +1,15 @@
+using System;
+using Badeland.World;
 using UnityEngine;
 
 namespace Badeland.Player
 {
     /// <summary>
     /// Kinematic third-person controller: camera-relative run with acceleration, variable-height
-    /// jump with coyote time and jump buffering. No Rigidbody, so it stays predictable and easy to
-    /// network later. All tuning lives in <see cref="MovementSettings"/>; temporary effects
-    /// (fish, pads) arrive through <see cref="MovementModifiers"/>.
+    /// jump with coyote time and jump buffering, plus swimming in <see cref="WaterVolume"/>s.
+    /// No Rigidbody, so it stays predictable and easy to network later. All tuning lives in
+    /// <see cref="MovementSettings"/>; temporary effects (fish, pads) arrive through
+    /// <see cref="MovementModifiers"/>.
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     [RequireComponent(typeof(PlayerInputReader))]
@@ -28,9 +31,18 @@ namespace Badeland.Player
         float _jumpBufferTimer;
         bool _jumping;
         float _wobblePhase;
+        float _noSwimTimer;
 
         public bool IsGrounded { get; private set; }
+        public bool IsSwimming { get; private set; }
+        /// <summary>Metres of the body below the water surface (0 when not in water).</summary>
+        public float WaterDepth { get; private set; }
         public Vector3 Velocity => _horizontalVelocity + Vector3.up * _verticalVelocity;
+
+        /// <summary>Fired when the player enters deep water. The argument is the downward speed on impact.
+        /// Hook up splash effects and sounds to this.</summary>
+        public event Action<float> EnteredWater;
+        public event Action ExitedWater;
 
         void Awake()
         {
@@ -45,14 +57,82 @@ namespace Badeland.Player
             if (settings == null) return;
             float dt = Time.deltaTime;
 
-            UpdateHorizontal(dt);
-            UpdateVertical(dt);
+            UpdateWaterState(dt);
+
+            if (IsSwimming)
+            {
+                UpdateHorizontal(dt, settings.swimSpeed, settings.swimAcceleration, settings.swimDeceleration, 1f);
+                UpdateSwimVertical(dt);
+            }
+            else
+            {
+                UpdateHorizontal(dt, settings.maxSpeed, settings.acceleration, settings.deceleration,
+                    IsGrounded ? 1f : settings.airControl);
+                UpdateVertical(dt);
+            }
 
             _cc.Move((_horizontalVelocity + Vector3.up * _verticalVelocity) * dt);
             IsGrounded = _cc.isGrounded;
         }
 
-        void UpdateHorizontal(float dt)
+        // ---------------------------------------------------------------- water
+
+        float FeetY() => transform.position.y + _cc.center.y - _cc.height * 0.5f;
+
+        void UpdateWaterState(float dt)
+        {
+            _noSwimTimer -= dt;
+
+            bool inWater = WaterVolume.TryFind(transform.position, out WaterVolume volume, out float surfaceY);
+            WaterDepth = inWater ? Mathf.Max(0f, surfaceY - FeetY()) : 0f;
+
+            if (!IsSwimming)
+            {
+                if (inWater && _noSwimTimer <= 0f && WaterDepth >= settings.swimEnterDepth)
+                {
+                    IsSwimming = true;
+                    _jumping = false;
+                    _jumpBufferTimer = 0f;
+                    float impact = Mathf.Max(0f, -_verticalVelocity);
+                    _verticalVelocity *= 0.35f; // the water catches you
+                    EnteredWater?.Invoke(impact);
+                }
+            }
+            else if (!inWater || WaterDepth < settings.swimExitDepth)
+            {
+                IsSwimming = false;
+                ExitedWater?.Invoke();
+            }
+        }
+
+        void UpdateSwimVertical(float dt)
+        {
+            // Hop out of the water: jump at the surface to leap onto the pool edge.
+            if (_input.JumpPressed && WaterDepth <= settings.floatDepth + 0.5f)
+            {
+                _verticalVelocity = settings.SurfaceHopVelocity;
+                _noSwimTimer = 0.35f; // do not re-enter the water on the way up
+                IsSwimming = false;
+                ExitedWater?.Invoke();
+                return;
+            }
+
+            if (IsGrounded && _verticalVelocity < 0f) _verticalVelocity = 0f; // resting on the pool floor
+
+            // Spring-damper towards the target depth: floating by default, deeper while diving.
+            WaterVolume.TryFind(transform.position, out _, out float surfaceY);
+            float targetDepth = _input.DiveHeld ? settings.diveDepth : settings.floatDepth;
+            float targetFeetY = surfaceY - targetDepth;
+
+            float accel = settings.buoyancyStrength * (targetFeetY - FeetY())
+                          - settings.buoyancyDamping * _verticalVelocity;
+            _verticalVelocity += accel * dt;
+            _verticalVelocity = Mathf.Clamp(_verticalVelocity, -settings.diveSpeed, settings.diveSpeed);
+        }
+
+        // ---------------------------------------------------------------- ground and air
+
+        void UpdateHorizontal(float dt, float maxSpeed, float acceleration, float deceleration, float control)
         {
             Vector3 wish = CameraRelative(_input.Move);
 
@@ -69,9 +149,8 @@ namespace Badeland.Player
                 }
             }
 
-            Vector3 target = wish * (settings.maxSpeed * speedMult);
-            float rate = wish.sqrMagnitude > 0.0001f ? settings.acceleration : settings.deceleration;
-            if (!IsGrounded) rate *= settings.airControl;
+            Vector3 target = wish * (maxSpeed * speedMult);
+            float rate = (wish.sqrMagnitude > 0.0001f ? acceleration : deceleration) * control;
 
             _horizontalVelocity = Vector3.MoveTowards(_horizontalVelocity, target, rate * dt);
 

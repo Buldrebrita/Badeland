@@ -33,8 +33,30 @@ namespace Badeland.Player
         [Tooltip("Terminal fall speed (positive number).")]
         [Min(1f)] public float maxFallSpeed = 30f;
 
+        [Header("Swim")]
+        [Min(0f)] public float swimSpeed = 6f;
+        [Min(0f)] public float swimAcceleration = 25f;
+        [Min(0f)] public float swimDeceleration = 18f;
+        [Tooltip("How deep (metres of the body below the surface) before you start swimming instead of wading.")]
+        [Min(0f)] public float swimEnterDepth = 1.2f;
+        [Tooltip("Swimming ends again when the water gets shallower than this.")]
+        [Min(0f)] public float swimExitDepth = 0.8f;
+        [Tooltip("How far the feet hang below the surface when floating. Lower = body sits higher.")]
+        [Min(0f)] public float floatDepth = 1.3f;
+        [Tooltip("How hard the water pushes you back to the floating level.")]
+        [Min(0f)] public float buoyancyStrength = 30f;
+        [Tooltip("How quickly bobbing settles. Higher = less bounce.")]
+        [Min(0f)] public float buoyancyDamping = 7f;
+        [Tooltip("How far below the surface the feet go while diving.")]
+        [Min(0f)] public float diveDepth = 3.5f;
+        [Tooltip("Max speed going down or up under water.")]
+        [Min(0f)] public float diveSpeed = 5f;
+        [Tooltip("Height of the hop out of the water when you press jump at the surface.")]
+        [Min(0f)] public float surfaceHopHeight = 2.4f;
+
         public float Gravity => Mathf.Abs(Physics.gravity.y) * gravityScale;
         public float MaxJumpVelocity => Mathf.Sqrt(2f * Gravity * maxJumpHeight);
+        public float SurfaceHopVelocity => Mathf.Sqrt(2f * Gravity * surfaceHopHeight);
         public float MinJumpVelocity => Mathf.Sqrt(2f * Gravity * Mathf.Min(minJumpHeight, maxJumpHeight));
     }
 }
