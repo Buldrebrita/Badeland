@@ -33,7 +33,7 @@ A 15 to 20 minute section that takes a player (solo or in a group of up to four)
 | 12 | One finish area | Celebration pool with stars shown, results screen | Simple UI |
 | 13 | The floating platform | Large inflatable platform on dark-able water, the arena | Platform on a water plane |
 | 15 | Lap loop | Obstacle course run 3 times (tunable) with lap counter and per-lap variation | Counter and a loop trigger |
-| 16 | Catchable fish | 3 species (cod buff, salmon buff, clownfish debuff) jumping over the obstacles, caught and held for an effect | Capsule fish on spline arcs, effect via data asset |
+| 16 | Catchable fish | 3 species (cod buff, salmon buff, clownfish debuff) jumping over the obstacles, caught and held (one at a time) for an effect, slips away after a while, can be thrown at another player | Capsule fish on spline arcs, effect via data asset |
 | 14 | Basic monster encounter | Tentacle attack patterns, throwable objects, scripted swallow, cut to black | Capsule tentacles, scripted camera |
 
 ## Flow

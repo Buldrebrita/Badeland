@@ -62,8 +62,10 @@ The waterpark course is a **circuit** the party runs two or three times (lap cou
 
 Fish of different species leap out of the water and arc over the obstacles along the course. Players can chase and **catch** them by running into them, jumping at them, or using a net-like grab (final verb to be tuned).
 
-- A player holds **one fish at a time**. The held fish gives a **buff or debuff** while carried.
-- The fish wriggles and eventually escapes (about 20 seconds, tunable), or the player can drop it or throw it to a teammate. Catching another fish swaps it.
+- A player holds **only one fish at a time**. Catching another fish while holding one is not possible until the first is gone (drop it, throw it, or let it escape).
+- **Slippery:** the fish wriggles and wants to jump away. After a while (about 20 seconds, tunable per species) it slides out of the player's hands and leaps back into the water. A subtle wriggle and a visible timer cue (the fish thrashes harder) warn the player before it goes.
+- **Throwing:** the player can choose to throw the held fish at another player. The target gets that fish's effect (brief if it is a debuff, see co-op note below) and the fish becomes theirs, with its own slip-away timer.
+- The player can also drop the fish at any time to shed it.
 - Fish are fun targets, not required for completion. Collecting species counts toward collectibles and stars.
 - Debuffs are slapstick, never punishing: always short, always funny, and a player can shed them by dropping the fish.
 
@@ -189,7 +191,9 @@ Fully 3D environments seen from an elevated, angled-down isometric / three-quart
 - [ ] Release model: Chapter 1 as a full game with a sequel/update, or Early Access
 - [ ] Whether co-op uses one shared camera only, or limited split-screen for split paths
 - [ ] Single-player companion approach for co-op puzzles
-- [ ] Final lap count (2 or 3), and how course variations change per lap
-- [ ] Full fish roster and the held-fish rules (duration, one at a time, throwing)
+- [x] Lap count: 3
+- [x] Held-fish rules: one at a time, slippery (slides out after a while), can be thrown at another player
+- [ ] How course variations change per lap
+- [ ] Full fish roster and exact slip-away times
 - [ ] Whether to leave one very subtle clue in the laps (for example the fish behaving oddly) or none at all
 - [ ] Performance targets and minimum PC spec
