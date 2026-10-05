@@ -48,6 +48,45 @@ A much larger fantasy adventure in a surreal ecosystem (see section 9). Treated 
 - **Environmental puzzles:** small, readable, usually solvable in under a minute solo.
 - **Failure:** comedic and quick. Fall in, get launched, respawn at a nearby checkpoint. No gore, no real death.
 
+## 4b. Laps and catchable fish
+
+### The loop: 2 to 3 laps of the obstacle course
+
+The waterpark course is a **circuit** the party runs two or three times (lap count is a tunable, the slice uses 3) before the monster appears. It must look and feel like a normal, cheerful party game: a race with lap counter, stars and ranking, nothing hinting at the ending.
+
+- Each lap is a chance to do better: faster time, more fish caught, secrets found (see section 7).
+- Later laps can add small variations (an extra obstacle, a shortcut opens, fish get faster) so repeats do not feel identical.
+- The final lap ends on the floating platform and the party celebration, which is where the monster strikes (section 8).
+
+### Jumping fish
+
+Fish of different species leap out of the water and arc over the obstacles along the course. Players can chase and **catch** them by running into them, jumping at them, or using a net-like grab (final verb to be tuned).
+
+- A player holds **one fish at a time**. The held fish gives a **buff or debuff** while carried.
+- The fish wriggles and eventually escapes (about 20 seconds, tunable), or the player can drop it or throw it to a teammate. Catching another fish swaps it.
+- Fish are fun targets, not required for completion. Collecting species counts toward collectibles and stars.
+- Debuffs are slapstick, never punishing: always short, always funny, and a player can shed them by dropping the fish.
+
+| Fish | Effect | Kind |
+|---|---|---|
+| Cod | Run faster | Buff |
+| Salmon | Jump higher | Buff |
+| Pufferfish | Bounce off everything, inflates | Mixed (to design) |
+| Eel | Brief electric dash, shocks nearby players | Mixed (to design) |
+| Swordfish | Charge forward, knocks obstacles and players | Mixed (to design) |
+| Clownfish | Cannot walk straight: steering wobbles side to side | Debuff |
+| Flatfish | Heavy and slow, but cannot be knocked back | Debuff (to design) |
+
+Only the cod, salmon and clownfish are decided. The rest are suggestions to try in the prototype. Aim for roughly 6 to 8 species, with at least a third being debuffs.
+
+Design notes:
+
+- Ability variables go in a data asset per species so they are tunable without code (ScriptableObject).
+- Readability: every species has a distinct silhouette and colour, and the held fish is visible on the player plus a small icon. Buff and debuff must be clear at a glance.
+- Co-op: throwing a bad fish at a teammate is a joke, not a grief, so a hit applies the debuff only briefly and can be opted out of like other player-affecting effects.
+- Multiplayer: fish paths are deterministic or host-authoritative so all players see the same fish.
+- Solo: works unchanged, fish are a personal power-up.
+
 ## 5. Hidden traps and treasure
 
 Core loop: **EXPLORE -> FIND SECRET -> GET TREASURE -> ESCAPE**
@@ -91,8 +130,10 @@ Ranking: 1 star completed, 2 stars good performance, 3 stars perfect performance
 
 Beats:
 
+**Sudden, not signposted.** The monster must feel like it comes out of nowhere. Through all the laps the game plays as a normal, fun, bright party game, with no creeping dread, odd lighting or ominous sound beforehand. The change happens very quickly (a few seconds, not a long build-up), which is what makes it land.
+
 1. **Calm.** The party arrives on a large floating inflatable platform in the Final Pool. A moment of celebration.
-2. **Wrongness.** Music thins out, the lights go down, the water darkens, a low sound from below.
+2. **Wrongness (a few seconds only).** The music cuts or drops out, the lights go down, the water darkens, a low sound from below. No earlier foreshadowing.
 3. **Attack.** Tentacles and strikes from beneath the water. Players dodge and fight back with objects collected earlier or found on the platform.
 4. **Escalation.** The monster is far bigger than the players. The platform shrinks, tilts or deflates.
 5. **Unwinnable.** The fight turns. The monster swallows everyone.
@@ -148,4 +189,7 @@ Fully 3D environments seen from an elevated, angled-down isometric / three-quart
 - [ ] Release model: Chapter 1 as a full game with a sequel/update, or Early Access
 - [ ] Whether co-op uses one shared camera only, or limited split-screen for split paths
 - [ ] Single-player companion approach for co-op puzzles
+- [ ] Final lap count (2 or 3), and how course variations change per lap
+- [ ] Full fish roster and the held-fish rules (duration, one at a time, throwing)
+- [ ] Whether to leave one very subtle clue in the laps (for example the fish behaving oddly) or none at all
 - [ ] Performance targets and minimum PC spec

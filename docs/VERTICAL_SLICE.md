@@ -15,7 +15,7 @@ A 15 to 20 minute section that takes a player (solo or in a group of up to four)
 - After the cut to black, testers say they want to see what is next.
 - Runs at 60 fps at 1080p on the target mid-range GPU (to be confirmed).
 
-## Contents (the 14 items)
+## Contents (the 14 original items plus 15 and 16)
 
 | # | Item | Design | Gray-box version first |
 |---|---|---|---|
@@ -32,12 +32,14 @@ A 15 to 20 minute section that takes a player (solo or in a group of up to four)
 | 11 | One simple puzzle | Hold-a-button gate: a second player holds it, solo uses a heavy object | Pressure plate and door |
 | 12 | One finish area | Celebration pool with stars shown, results screen | Simple UI |
 | 13 | The floating platform | Large inflatable platform on dark-able water, the arena | Platform on a water plane |
+| 15 | Lap loop | Obstacle course run 3 times (tunable) with lap counter and per-lap variation | Counter and a loop trigger |
+| 16 | Catchable fish | 3 species (cod buff, salmon buff, clownfish debuff) jumping over the obstacles, caught and held for an effect | Capsule fish on spline arcs, effect via data asset |
 | 14 | Basic monster encounter | Tentacle attack patterns, throwable objects, scripted swallow, cut to black | Capsule tentacles, scripted camera |
 
 ## Flow
 
 1. **Start plaza.** Cheerful. Short tutorial: move, jump, interact, throw.
-2. **Obstacle course.** Bounce pads, rotating bars, moving platforms. A suspicious inflatable object sits slightly off the path.
+2. **Obstacle course, 3 laps.** Fish jump over the obstacles, players catch them for buffs and debuffs (cod: faster, salmon: higher jump, clownfish: cannot walk straight). Bounce pads, rotating bars, moving platforms. A suspicious inflatable object sits slightly off the path.
 3. **Hidden trap and treasure.** Investigate the object, the floor opens, fall into a secret room. Take the treasure, the room starts to close or flood, escape.
 4. **Puzzle.** A gate that needs a button held. Solo: push a heavy object onto the plate. Co-op: a teammate stands on it.
 5. **Slide.** A long, fun, loud slide with a splash finish into the final pool.
@@ -48,7 +50,7 @@ A 15 to 20 minute section that takes a player (solo or in a group of up to four)
 
 ## Monster encounter spec (slice version)
 
-- **Phase 1 (calm to wrong):** music fades, lights lower, water darkens, low rumble, ripples under the platform.
+- **Phase 1 (sudden):** the game is cheerful right up to this moment, with no earlier warning. Music cuts, lights drop, water darkens, a low rumble, within a few seconds.
 - **Phase 2 (tentacle attacks):** 2 to 3 telegraphed patterns, for example a slam on a marked circle, a sweeping arm to jump over, a grab attempt on a player that teammates can break. Each telegraph is visible a beat before the hit.
 - **Phase 3 (counterattack):** players pick up and throw objects (balls, floats, cannon-launched things) at weak points. Hits hurt the monster enough to feel like progress.
 - **Phase 4 (escalation):** the monster rises, the platform tilts or deflates, patterns speed up.
@@ -74,7 +76,8 @@ Each stage ends with something you can play and judge.
 | S0 | Create the Unity project, check the repo workflow | Opens and pushes cleanly |
 | S1 | Character controller and isometric camera in a gray-box scene | Does moving and jumping feel good? |
 | S2 | Water, swimming, enter/exit, buoyancy | Is swimming fun, not fiddly? |
-| S3 | Slide and obstacle course | Is the course fun to replay? |
+| S3 | Slide and obstacle course, lap loop | Is the course fun to replay three times? |
+| S3b | Catchable fish and their effects | Is chasing fish fun, and are buff/debuff clear? |
 | S4 | Hidden trap, treasure, escape, simple puzzle | Do testers find the trap and laugh? |
 | S5 | **Networking spike:** two players online through all of the above | Can two friends play together? |
 | S6 | Finish area, floating platform, monster v0 with patterns | Is the fight readable and tense? |
