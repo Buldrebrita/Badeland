@@ -55,7 +55,12 @@ A much larger fantasy adventure in a surreal ecosystem (see section 9). Treated 
 The waterpark course is a **circuit** the party runs two or three times (lap count is a tunable, the slice uses 3) before the monster appears. It must look and feel like a normal, cheerful party game: a race with lap counter, stars and ranking, nothing hinting at the ending.
 
 - Each lap is a chance to do better: faster time, more fish caught, secrets found (see section 7).
-- Later laps can add small variations (an extra obstacle, a shortcut opens, fish get faster) so repeats do not feel identical.
+- **Every lap is a little bit different**, in subtle ways. The goal is for players to ask each other *"wait, was that there before?"* or *"hold on, wasn't there a thing there?"* The changes are noticed, not announced: no popups, no sound sting, no marker.
+- Changes are mostly cosmetic or background, and never unfair. They must not break the course, change the route, or make the race harder in a way the player can't read.
+- Example changes (to be designed per area): a prop that moved or is missing, a slightly different colour or inflatable shape, lights or shadows a touch different, a sign with different text, fewer people in the background, a ripple or shape under the water, a fish that is behaving differently, a sound that is slightly off.
+- Rule of thumb: lap 1 is normal, lap 2 has a few small oddities, lap 3 has more of them. Escalate gently, and always keep it deniable. Each change has a plausible innocent explanation.
+- These are the game's only foreshadowing (see section 8): the *mood* stays cheerful, the *monster itself* is still a complete surprise, and players only understand the clues in hindsight.
+- Technically, drive the changes from a per-lap data asset (list of objects to toggle, move or retint per lap) so designers can add them without code.
 - The final lap ends on the floating platform and the party celebration, which is where the monster strikes (section 8).
 
 ### Jumping fish
@@ -132,7 +137,7 @@ Ranking: 1 star completed, 2 stars good performance, 3 stars perfect performance
 
 Beats:
 
-**Sudden, not signposted.** The monster must feel like it comes out of nowhere. Through all the laps the game plays as a normal, fun, bright party game, with no creeping dread, odd lighting or ominous sound beforehand. The change happens very quickly (a few seconds, not a long build-up), which is what makes it land.
+**Sudden, not signposted.** The monster must feel like it comes out of nowhere. Through all the laps the game plays as a normal, fun, bright party game, with no creeping dread or ominous music beforehand. The only hints are the small per-lap differences in section 4b, which players notice but cannot explain until later. The attack itself happens very quickly (a few seconds, not a long build-up), which is what makes it land.
 
 1. **Calm.** The party arrives on a large floating inflatable platform in the Final Pool. A moment of celebration.
 2. **Wrongness (a few seconds only).** The music cuts or drops out, the lights go down, the water darkens, a low sound from below. No earlier foreshadowing.
@@ -193,7 +198,7 @@ Fully 3D environments seen from an elevated, angled-down isometric / three-quart
 - [ ] Single-player companion approach for co-op puzzles
 - [x] Lap count: 3
 - [x] Held-fish rules: one at a time, slippery (slides out after a while), can be thrown at another player
-- [ ] How course variations change per lap
+- [ ] The actual list of per-lap changes for the slice course
 - [ ] Full fish roster and exact slip-away times
-- [ ] Whether to leave one very subtle clue in the laps (for example the fish behaving oddly) or none at all
+- [x] Subtle clues: yes, as small per-lap differences
 - [ ] Performance targets and minimum PC spec
