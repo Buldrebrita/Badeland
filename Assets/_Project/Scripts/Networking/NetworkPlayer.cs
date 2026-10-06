@@ -44,6 +44,9 @@ namespace Badeland.Networking
         readonly NetworkVariable<int> _heldFish = new NetworkVariable<int>(
             -1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
+        static readonly System.Collections.Generic.Dictionary<ulong, NetworkPlayer> ByClient =
+            new System.Collections.Generic.Dictionary<ulong, NetworkPlayer>();
+
         CharacterController _cc;
         PlayerController _controller;
         PlayerInputReader _input;
@@ -65,6 +68,7 @@ namespace Badeland.Networking
 
         public override void OnNetworkSpawn()
         {
+            ByClient[OwnerClientId] = this;
             Tint();
 
             if (IsOwner)
@@ -103,6 +107,8 @@ namespace Badeland.Networking
 
         public override void OnNetworkDespawn()
         {
+            if (ByClient.TryGetValue(OwnerClientId, out var registered) && registered == this) ByClient.Remove(OwnerClientId);
+
             var rig = IsoCameraRig.Instance;
             if (rig != null) rig.RemoveTarget(transform);
 
@@ -168,18 +174,26 @@ namespace Badeland.Networking
         [ServerRpc]
         void ThrowFishServerRpc(ulong targetClientId, int speciesIndex, float seconds)
         {
-            // The host checks the target is still empty-handed, then forwards the fish to the target's own machine.
-            var targetObject = NetworkManager.SpawnManager.GetPlayerNetworkObject(targetClientId);
-            if (targetObject == null) return;
+            Debug.Log("Badeland: host received a fish throw from player " + OwnerClientId + " to player " + targetClientId);
 
-            var target = targetObject.GetComponent<NetworkPlayer>();
-            if (target == null || target.HoldsFish) return;
+            // The host checks the target is still empty-handed, then forwards the fish to the target's own machine.
+            if (!ByClient.TryGetValue(targetClientId, out var target))
+            {
+                Debug.LogWarning("Badeland: throw target " + targetClientId + " not found on the host.");
+                return;
+            }
+            if (target.HoldsFish)
+            {
+                Debug.Log("Badeland: throw refused, the target is already holding a fish.");
+                return;
+            }
 
             var rpcParams = new ClientRpcParams
             {
                 Send = new ClientRpcSendParams { TargetClientIds = new[] { targetClientId } }
             };
             target.ReceiveFishClientRpc(speciesIndex, seconds, rpcParams);
+            ShowThrowClientRpc(targetClientId, speciesIndex);
         }
 
         [ClientRpc]
@@ -187,7 +201,19 @@ namespace Badeland.Networking
         {
             // Runs on the target player's own machine.
             if (!IsOwner) return;
+            Debug.Log("Badeland: you were hit by a thrown fish (species " + speciesIndex + ").");
             _carrier.ReceiveThrown(FishNetwork.SpeciesAt(speciesIndex), seconds);
+        }
+
+        // Everyone except the thrower (who already saw it fly) sees the fish arc across.
+        [ClientRpc]
+        void ShowThrowClientRpc(ulong targetClientId, int speciesIndex)
+        {
+            if (IsOwner) return;
+            if (!ByClient.TryGetValue(targetClientId, out var target)) return;
+            var species = FishNetwork.SpeciesAt(speciesIndex);
+            if (species == null) return;
+            ThrownFishVisual.Spawn(transform.position + Vector3.up, target.transform.position + Vector3.up, species.color);
         }
 
         // ---------------------------------------------------------------- look

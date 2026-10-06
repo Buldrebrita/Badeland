@@ -142,9 +142,11 @@ namespace Badeland.EditorTools
             bar.AddComponent<RotatingBar>();
 
             // ---- Jumping fish: random places and times. Each area leaps from open water towards the deck.
-            FishArea("Fish Area Right", new[] { cod, salmon }, new Vector3(27f, 0.3f, 0f), new Vector3(1f, 0f, 16f), 270f, 8f, 13f, 11);
-            FishArea("Fish Area Top", new[] { salmon, clown, cod }, new Vector3(0f, 0.3f, 21f), new Vector3(30f, 0f, 1f), 180f, 8f, 13f, 22);
-            FishArea("Fish Area Left (gap)", new[] { clown, cod }, new Vector3(-27f, 0.3f, 0f), new Vector3(1f, 0f, 16f), 90f, 6f, 11f, 33);
+            // Each leap starts in the sea outside a deck and lands back in the sea on the far side, so a fish
+            // never ends inside a deck. A narrow spread keeps it from landing on another deck.
+            FishArea("Fish Area Right", new[] { cod, salmon }, new Vector3(27f, 0.3f, 0f), new Vector3(1f, 0f, 10f), 270f, 15f, 12.5f, 15f, 11);
+            FishArea("Fish Area Top", new[] { salmon, clown, cod }, new Vector3(0f, 0.3f, 21f), new Vector3(16f, 0f, 1f), 180f, 15f, 12.5f, 15f, 22);
+            FishArea("Fish Area Left (gap)", new[] { clown, cod }, new Vector3(-27f, 0.3f, 0f), new Vector3(1f, 0f, 10f), 90f, 15f, 11f, 14f, 33);
 
             // ---- Subtle per-lap changes near the start (see DESIGN.md 4b). Lap 1 is normal.
             var towel = Box("Towel", new Vector3(-4f, 0.66f, -12f), new Vector3(1.6f, 0.1f, 0.9f), new Color(1f, 0.3f, 0.3f));
@@ -253,7 +255,7 @@ namespace Badeland.EditorTools
         }
 
         static void FishArea(string name, FishSpecies[] pool, Vector3 zoneCenter, Vector3 zoneSize, float heading,
-            float minDistance, float maxDistance, int seed)
+            float spread, float minDistance, float maxDistance, int seed)
         {
             var root = new GameObject(name);
             root.transform.position = zoneCenter;
@@ -272,6 +274,7 @@ namespace Badeland.EditorTools
             jumper.zoneCenter = zoneCenter;
             jumper.zoneSize = zoneSize;
             jumper.headingDegrees = heading;
+            jumper.headingSpread = spread;
             jumper.minDistance = minDistance;
             jumper.maxDistance = maxDistance;
             jumper.seed = seed;

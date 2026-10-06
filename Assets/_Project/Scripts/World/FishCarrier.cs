@@ -128,7 +128,8 @@ namespace Badeland.World
             FishCarrier target = FindThrowTarget();
             if (target == null)
             {
-                // Nobody to hit: the fish flops away. A thrown projectile can replace this later.
+                // Nobody to hit: the fish flops away.
+                Debug.Log("Badeland: nobody in range to throw the fish at (they must be within " + throwRange + " m and have empty hands).");
                 Release(FishLossReason.Dropped);
                 return;
             }
@@ -139,6 +140,7 @@ namespace Badeland.World
                 : species.holdSeconds;
 
             Release(FishLossReason.Thrown);
+            ThrownFishVisual.Spawn(transform.position + Vector3.up, target.transform.position + Vector3.up, species.color);
             if (target.IsLocal)
                 target.Receive(species, seconds);
             else
@@ -150,6 +152,8 @@ namespace Badeland.World
             Vector3 forward = Vector3.ProjectOnPlane(aim.forward, Vector3.up).normalized;
             FishCarrier best = null;
             float bestScore = float.MaxValue;
+            FishCarrier nearest = null;
+            float nearestDistance = float.MaxValue;
 
             foreach (var other in All)
             {
@@ -160,13 +164,16 @@ namespace Badeland.World
                 to.y = 0f;
                 float dist = to.magnitude;
                 if (dist > throwRange || dist < 0.01f) continue;
+
+                if (dist < nearestDistance) { nearestDistance = dist; nearest = other; }
                 if (Vector3.Angle(forward, to) > throwArc) continue;
 
                 float score = dist * (1f + Vector3.Angle(forward, to) / throwArc);
                 if (score < bestScore) { bestScore = score; best = other; }
             }
 
-            return best;
+            // Prefer whoever you are facing, but if nobody is in front of you, throw at the nearest player in range.
+            return best != null ? best : nearest;
         }
     }
 
