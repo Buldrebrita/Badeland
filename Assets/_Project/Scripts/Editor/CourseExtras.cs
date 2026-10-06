@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using Badeland.World;
 using UnityEditor;
 using UnityEngine;
@@ -22,9 +23,10 @@ namespace Badeland.EditorTools
             public Camera camera;
         }
 
-        // The big platform in the middle of the sea. The monster fight happens here.
-        static readonly Vector3 PlatformCenter = new Vector3(4f, 0f, 0f);
-        static readonly Vector3 PlatformSize = new Vector3(14f, 1.2f, 11f);
+        // The big start/finish platform where the monster fight happens (the plaza south of the bottom straight).
+        // Includes the strip of bottom straight beside it, so the area players gather in is clearly inside.
+        static readonly Vector3 ArenaCenter = new Vector3(-11f, 0f, -22f);
+        static readonly Vector3 ArenaSize = new Vector3(34f, 1f, 24f);
 
         public static void Build(Context c)
         {
@@ -32,8 +34,7 @@ namespace Badeland.EditorTools
             BuildWindmill();
             BuildSlide();
             BuildTrapAndRoom();
-            BuildArena(c);
-            BuildScenery();
+            BuildMonster(c);
             ApplyLook(c);
         }
 
@@ -82,10 +83,18 @@ namespace Badeland.EditorTools
 
         static void BuildSlide()
         {
-            // Stairs up to a tower in the top-west corner. Stepping into the slide's mouth on top starts the ride.
             var orange = new Color(1f, 0.55f, 0.1f);
-            S3SceneBuilder.Box("Slide Step 1", new Vector3(-18f, 0.8f, 16f), new Vector3(2f, 1.6f, 4f), orange);
-            S3SceneBuilder.Box("Slide Step 2", new Vector3(-20f, 1.3f, 16f), new Vector3(2f, 2.6f, 4f), orange);
+
+            // A long, gentle ramp up to a tower in the top-west corner (3 m up over 9 m: easy to just run up).
+            const float rampX0 = -12f, rampX1 = -21f, rampY0 = 0.6f, rampY1 = 3.6f, rampZ = 16f, rampThickness = 1f;
+            float rampLength = Mathf.Sqrt((rampX0 - rampX1) * (rampX0 - rampX1) + (rampY1 - rampY0) * (rampY1 - rampY0));
+            float rampAngle = Mathf.Atan2(rampY1 - rampY0, rampX0 - rampX1) * Mathf.Rad2Deg;
+            Quaternion rampRotation = Quaternion.Euler(0f, 0f, -rampAngle); // rises towards the west
+            Vector3 surfaceMid = new Vector3((rampX0 + rampX1) * 0.5f, (rampY0 + rampY1) * 0.5f, rampZ);
+            var ramp = S3SceneBuilder.Box("Slide Ramp", surfaceMid - (rampRotation * Vector3.up) * (rampThickness * 0.5f),
+                new Vector3(rampLength, rampThickness, 4f), orange);
+            ramp.transform.rotation = rampRotation;
+
             S3SceneBuilder.Box("Slide Tower", new Vector3(-22.5f, 1.8f, 16f), new Vector3(3f, 3.6f, 4f), new Color(1f, 0.4f, 0.7f));
 
             var root = new GameObject("Water Slide");
@@ -115,40 +124,81 @@ namespace Badeland.EditorTools
             slide.points = points;
             slide.Rebuild();
 
-            // The track: a chain of slabs with orange rails, following the curve.
-            var track = new GameObject("Slide Track").transform;
-            track.SetParent(root.transform);
+            // The track is three smooth meshes (a floor and two rails) that follow the curve without any gaps.
+            float railX = slide.laneHalfWidth + 0.2f + 0.18f;
+            BuildSlideMesh(root.transform, slide, "Slide Floor", slide.laneHalfWidth + 0.2f, 0.125f, new Vector2(0f, -0.125f), new Color(0.15f, 0.55f, 1f));
+            BuildSlideMesh(root.transform, slide, "Slide Rail Left", 0.18f, 0.45f, new Vector2(-railX, 0.35f), orange);
+            BuildSlideMesh(root.transform, slide, "Slide Rail Right", 0.18f, 0.45f, new Vector2(railX, 0.35f), orange);
 
-            const float spacing = 1.4f;
-            int segments = Mathf.CeilToInt(slide.Length / spacing);
-            float width = slide.laneHalfWidth * 2f + 0.4f;
-            for (int i = 0; i < segments; i++)
+            // Support pillars now and then.
+            const float spacing = 7f;
+            for (float d = 4f; d < slide.Length; d += spacing)
             {
-                slide.SampleAt(i * spacing + spacing * 0.5f, out Vector3 pos, out Vector3 tangent);
-                Quaternion rot = Quaternion.LookRotation(tangent, Vector3.up);
+                slide.SampleAt(d, out Vector3 pos, out _);
+                if (pos.y < 1.6f) continue;
+                float height = pos.y - 0.3f + 0.8f;
+                var pillar = S3SceneBuilder.Cyl("Slide Pillar", new Vector3(pos.x, -0.8f + height * 0.5f, pos.z), new Vector3(0.6f, height * 0.5f, 0.6f), new Color(0.9f, 0.9f, 0.95f));
+                Object.DestroyImmediate(pillar.GetComponent<Collider>());
+                pillar.transform.SetParent(root.transform, true);
+            }
+        }
 
-                var slab = S3SceneBuilder.Box("Slide Slab", pos - Vector3.up * 0.125f, new Vector3(width, 0.25f, spacing * 1.15f), new Color(0.15f, 0.55f, 1f));
-                slab.transform.rotation = rot;
-                Object.DestroyImmediate(slab.GetComponent<Collider>());
-                slab.transform.SetParent(track, true);
+        // One continuous mesh: a rectangle extruded along the slide's curve. Saved as an asset so the scene keeps it.
+        static void BuildSlideMesh(Transform parent, WaterSlide slide, string name, float halfWidth, float halfHeight, Vector2 offset, Color color)
+        {
+            const float step = 0.5f;
+            int rings = Mathf.CeilToInt(slide.Length / step) + 1;
 
-                for (int side = -1; side <= 1; side += 2)
+            var positions = new Vector3[rings];
+            var rotations = new Quaternion[rings];
+            for (int i = 0; i < rings; i++)
+            {
+                slide.SampleAt(Mathf.Min(i * step, slide.Length), out Vector3 pos, out Vector3 tangent);
+                positions[i] = pos;
+                rotations[i] = Quaternion.LookRotation(tangent, Vector3.up);
+            }
+
+            Vector2[] corners =
+            {
+                new Vector2(-halfWidth, -halfHeight) + offset, new Vector2(halfWidth, -halfHeight) + offset,
+                new Vector2(halfWidth, halfHeight) + offset, new Vector2(-halfWidth, halfHeight) + offset,
+            };
+
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            for (int face = 0; face < 4; face++)
+            {
+                Vector2 a = corners[face], b = corners[(face + 1) % 4];
+                int start = vertices.Count;
+                for (int i = 0; i < rings; i++)
                 {
-                    var rail = S3SceneBuilder.Box("Slide Rail", pos + rot * new Vector3(side * (width * 0.5f), 0.4f, 0f), new Vector3(0.35f, 0.9f, spacing * 1.15f), orange);
-                    rail.transform.rotation = rot;
-                    Object.DestroyImmediate(rail.GetComponent<Collider>());
-                    rail.transform.SetParent(track, true);
+                    vertices.Add(positions[i] + rotations[i] * new Vector3(a.x, a.y, 0f));
+                    vertices.Add(positions[i] + rotations[i] * new Vector3(b.x, b.y, 0f));
                 }
-
-                // Support pillars every few slabs.
-                if (i % 5 == 2 && pos.y > 1.6f)
+                for (int i = 0; i < rings - 1; i++)
                 {
-                    float height = pos.y - 0.3f + 0.8f;
-                    var pillar = S3SceneBuilder.Cyl("Slide Pillar", new Vector3(pos.x, -0.8f + height * 0.5f, pos.z), new Vector3(0.5f, height * 0.5f, 0.5f), new Color(0.9f, 0.9f, 0.95f));
-                    Object.DestroyImmediate(pillar.GetComponent<Collider>());
-                    pillar.transform.SetParent(track, true);
+                    int v0 = start + 2 * i, v1 = v0 + 1, v2 = v0 + 2, v3 = v0 + 3;
+                    triangles.Add(v0); triangles.Add(v2); triangles.Add(v1);
+                    triangles.Add(v1); triangles.Add(v2); triangles.Add(v3);
                 }
             }
+
+            var mesh = new Mesh { name = name };
+            mesh.SetVertices(vertices);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+
+            Directory.CreateDirectory("Assets/_Project/Art/Environment");
+            string path = "Assets/_Project/Art/Environment/" + name.Replace(' ', '_') + ".asset";
+            AssetDatabase.DeleteAsset(path);
+            AssetDatabase.CreateAsset(mesh, path);
+
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            go.AddComponent<MeshRenderer>();
+            GrayboxMaterials.TintDoubleSided(go, color); // double-sided, so it shows from every side
         }
 
         // ------------------------------------------------------------------ hidden trap and treasure room
@@ -227,163 +277,105 @@ namespace Badeland.EditorTools
             trap.room = room;
         }
 
-        // ------------------------------------------------------------------ the big platform and the monster
+        // ------------------------------------------------------------------ the monster
 
-        static void BuildArena(Context c)
+        static void BuildMonster(Context c)
         {
-            var deck = S3SceneBuilder.Deck("Big Platform", PlatformCenter, PlatformSize);
-
-            // Orange border (visual only) and green corner posts, like the rest of the park.
-            float hx = PlatformSize.x * 0.5f, hz = PlatformSize.z * 0.5f;
-            foreach (var edge in new[]
-            {
-                new Vector3(0f, 0.62f, hz - 0.2f), new Vector3(0f, 0.62f, -hz + 0.2f),
-            })
-                S3SceneBuilder.Trim("Platform Trim", PlatformCenter + edge, new Vector3(PlatformSize.x, 0.1f, 0.4f));
-            foreach (var edge in new[]
-            {
-                new Vector3(hx - 0.2f, 0.62f, 0f), new Vector3(-hx + 0.2f, 0.62f, 0f),
-            })
-                S3SceneBuilder.Trim("Platform Trim", PlatformCenter + edge, new Vector3(0.4f, 0.1f, PlatformSize.z));
-
-            // Beach balls for the party before the monster (they are also things to jump over while dodging).
-            S3SceneBuilder.Ball("Party Ball", PlatformCenter + new Vector3(4.5f, 1.85f, 3f), 2.2f, new Color(1f, 0.3f, 0.3f), true);
-            S3SceneBuilder.Ball("Party Ball", PlatformCenter + new Vector3(-4.5f, 1.85f, -3f), 2.2f, new Color(0.3f, 0.5f, 1f), true);
-
-            // The bridge from the bottom deck. It only inflates once everyone has finished the laps.
-            var bridge = S3SceneBuilder.Box("Bridge", new Vector3(4f, 0f, -7.75f), new Vector3(4f, 1.2f, 4.5f), new Color(1f, 0.4f, 0.7f));
-            var unlock = new GameObject("Bridge Unlock").AddComponent<FinishUnlock>();
-            unlock.tracker = c.tracker;
-            unlock.enableOnFinish = new[] { bridge };
-
-            // ---- Monster pieces (switched off until the strike).
+            // ---- Pieces used by the attacks (switched off until used).
             var telegraph = S3SceneBuilder.Cyl("Telegraph Template", new Vector3(0f, -50f, 0f), new Vector3(1f, 0.02f, 1f), Color.red);
             GrayboxMaterials.TintWater(telegraph, new Color(1f, 0.15f, 0.1f, 0.5f));
             Object.DestroyImmediate(telegraph.GetComponent<Collider>());
 
-            var tentacle = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            tentacle.name = "Tentacle Template";
-            tentacle.transform.position = new Vector3(0f, -50f, 0f);
-            GrayboxMaterials.Tint(tentacle, new Color(0.32f, 0.1f, 0.5f));
-            Object.DestroyImmediate(tentacle.GetComponent<Collider>());
+            // One section of a tentacle. A tentacle is a long chain of these laid along a curve.
+            var section = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            section.name = "Tentacle Section Template";
+            section.transform.position = new Vector3(0f, -50f, 0f);
+            GrayboxMaterials.Tint(section, new Color(0.32f, 0.12f, 0.52f));
+            Object.DestroyImmediate(section.GetComponent<Collider>());
 
             var maw = S3SceneBuilder.Cyl("Mouth Template", new Vector3(0f, -50f, 0f), new Vector3(1f, 2f, 1f), new Color(0.45f, 0.05f, 0.1f));
             Object.DestroyImmediate(maw.GetComponent<Collider>());
 
-            // The head: a huge dark sphere with two big eyes, rising out of the sea behind the park.
+            // ---- The monster: a huge head that rises out of the sea east of the start platform, looking at the players.
+            // It sits below the water until the strike. Eyes and mouth face west (towards the platform).
             var head = new GameObject("Monster Head");
-            head.transform.position = new Vector3(4f, -14f, 46f);
+            head.transform.position = new Vector3(26f, -30f, -34f);
+
             var skull = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             skull.name = "Skull";
             skull.transform.SetParent(head.transform, false);
             skull.transform.localScale = Vector3.one * 24f;
-            GrayboxMaterials.Tint(skull, new Color(0.08f, 0.22f, 0.3f));
+            GrayboxMaterials.Tint(skull, new Color(0.08f, 0.24f, 0.3f));
             Object.DestroyImmediate(skull.GetComponent<Collider>());
-            for (int side = -1; side <= 1; side += 2)
+
+            var mouth = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            mouth.name = "Mouth";
+            mouth.transform.SetParent(head.transform, false);
+            mouth.transform.localPosition = new Vector3(-10.6f, -2.2f, 0f);
+            mouth.transform.localScale = new Vector3(3f, 5f, 14f);
+            GrayboxMaterials.Tint(mouth, new Color(0.45f, 0.05f, 0.1f));
+            Object.DestroyImmediate(mouth.GetComponent<Collider>());
+
+            var eyes = new Transform[2];
+            var pupils = new Transform[2];
+            for (int i = 0; i < 2; i++)
             {
+                float side = i == 0 ? -1f : 1f;
                 var eye = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 eye.name = "Eye";
                 eye.transform.SetParent(head.transform, false);
-                eye.transform.localPosition = new Vector3(side * 5f, 3f, -10.6f);
+                eye.transform.localPosition = new Vector3(-10.4f, 3.2f, side * 5f);
                 eye.transform.localScale = Vector3.one * 5.3f;
                 GrayboxMaterials.Tint(eye, new Color(1f, 1f, 0.7f));
                 Object.DestroyImmediate(eye.GetComponent<Collider>());
+                eyes[i] = eye.transform;
 
                 var pupil = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 pupil.name = "Pupil";
                 pupil.transform.SetParent(head.transform, false);
-                pupil.transform.localPosition = new Vector3(side * 5f, 3f, -12.6f);
+                pupil.transform.localPosition = new Vector3(-12.2f, 3.2f, side * 5f);
                 pupil.transform.localScale = Vector3.one * 2.6f;
                 GrayboxMaterials.Tint(pupil, Color.black);
                 Object.DestroyImmediate(pupil.GetComponent<Collider>());
+                pupils[i] = pupil.transform;
+            }
+
+            // Where the tentacles come out of the water (hidden under the sea until they rise).
+            Vector3[] anchors =
+            {
+                new Vector3(16f, -1f, -28f), new Vector3(16f, -1f, -40f), new Vector3(12f, -1f, -34f),
+                new Vector3(18f, -1f, -22f), new Vector3(18f, -1f, -46f),
+            };
+            var bases = new Transform[anchors.Length];
+            for (int i = 0; i < anchors.Length; i++)
+            {
+                var anchor = new GameObject("Tentacle Base " + i).transform;
+                anchor.position = anchors[i];
+                bases[i] = anchor;
             }
 
             var encounterObject = new GameObject("Monster Encounter");
             var encounter = encounterObject.AddComponent<MonsterEncounter>();
             encounter.tracker = c.tracker;
-            encounter.platformCenter = PlatformCenter;
-            encounter.platformSize = new Vector3(PlatformSize.x, 1f, PlatformSize.z);
+            encounter.platformCenter = ArenaCenter;
+            encounter.platformSize = ArenaSize;
             encounter.platformTopY = 0.6f;
+            encounter.celebrationSeconds = 5f;
             encounter.sun = c.sun;
             encounter.seaRenderer = c.sea != null ? c.sea.GetComponent<Renderer>() : null;
             encounter.telegraphTemplate = telegraph;
-            encounter.tentacleTemplate = tentacle;
+            encounter.segmentTemplate = section;
             encounter.mawTemplate = maw;
             encounter.head = head;
+            encounter.eyes = eyes;
+            encounter.pupils = pupils;
+            encounter.tentacleBases = bases;
 
-            // Switch the templates off now, so they are not in the world until used.
+            // Switch the pieces off now, so they are not in the world until used.
             telegraph.SetActive(false);
-            tentacle.SetActive(false);
+            section.SetActive(false);
             maw.SetActive(false);
             head.SetActive(false);
-        }
-
-        // ------------------------------------------------------------------ scenery
-
-        static void BuildScenery()
-        {
-            // Big hoops over the course to run through.
-            var grey = new Color(0.82f, 0.84f, 0.92f);
-            var green = new Color(0.35f, 0.8f, 0.4f);
-            Ring("Hoop", new Vector3(20f, 4.4f, -10.5f), 3.8f, Quaternion.identity, grey);
-            Ring("Hoop", new Vector3(20f, 4.4f, 10.5f), 3.8f, Quaternion.identity, green);
-            Ring("Hoop", new Vector3(-14f, 4.4f, 14f), 3.8f, Quaternion.Euler(0f, 90f, 0f), grey);
-            Ring("Hoop", new Vector3(14f, 4.4f, 14f), 3.8f, Quaternion.Euler(0f, 90f, 0f), green);
-            Ring("Hoop", new Vector3(-16f, 4.4f, -14f), 3.8f, Quaternion.Euler(0f, 90f, 0f), grey);
-
-            // Drones hovering over the park.
-            Vector3[] spots =
-            {
-                new Vector3(-30f, 12f, -30f), new Vector3(35f, 14f, 10f), new Vector3(-35f, 11f, 25f), new Vector3(10f, 13f, 40f),
-                new Vector3(45f, 12f, -35f), new Vector3(0f, 15f, -40f), new Vector3(-45f, 13f, 0f), new Vector3(30f, 11f, 35f),
-            };
-            for (int i = 0; i < spots.Length; i++) Drone(spots[i], i * 0.9f);
-        }
-
-        static void Ring(string name, Vector3 center, float radius, Quaternion rotation, Color color)
-        {
-            var root = new GameObject(name);
-            root.transform.position = center;
-            root.transform.rotation = rotation;
-
-            const int segments = 16;
-            float segmentLength = 2f * Mathf.PI * radius / segments * 1.15f;
-            for (int i = 0; i < segments; i++)
-            {
-                float angle = 2f * Mathf.PI * i / segments;
-                var seg = S3SceneBuilder.Box(name + " Segment", center, Vector3.one, color);
-                Object.DestroyImmediate(seg.GetComponent<Collider>());
-                seg.transform.SetParent(root.transform, false);
-                seg.transform.localPosition = new Vector3(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius, 0f);
-                seg.transform.localRotation = Quaternion.Euler(0f, 0f, angle * Mathf.Rad2Deg + 90f);
-                seg.transform.localScale = new Vector3(0.5f, segmentLength, 0.5f);
-            }
-        }
-
-        static void Drone(Vector3 position, float phase)
-        {
-            var root = new GameObject("Drone");
-            root.transform.position = position;
-
-            var body = S3SceneBuilder.Box("Drone Body", position, new Vector3(1.6f, 1.2f, 1.6f), new Color(0.2f, 0.7f, 0.9f));
-            Object.DestroyImmediate(body.GetComponent<Collider>());
-            body.transform.SetParent(root.transform, true);
-
-            var eye = S3SceneBuilder.Ball("Drone Eye", position + new Vector3(0f, 0f, -0.85f), 0.7f, Color.black, false);
-            eye.transform.SetParent(root.transform, true);
-
-            for (int side = -1; side <= 1; side += 2)
-            {
-                var rotor = S3SceneBuilder.Box("Drone Rotor", position + new Vector3(side * 1.4f, 0.9f, 0f), new Vector3(2.4f, 0.1f, 0.35f), new Color(0.95f, 0.95f, 0.95f));
-                Object.DestroyImmediate(rotor.GetComponent<Collider>());
-                rotor.transform.SetParent(root.transform, true);
-                rotor.AddComponent<Spinner>().degreesPerSecond = 720f;
-            }
-
-            var bob = root.AddComponent<Bobber>();
-            bob.amplitude = 0.6f;
-            bob.speed = 0.9f;
-            bob.phase = phase;
         }
 
         // ------------------------------------------------------------------ the look

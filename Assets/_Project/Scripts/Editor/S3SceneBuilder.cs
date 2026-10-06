@@ -82,11 +82,11 @@ namespace Badeland.EditorTools
             var sea = GameObject.CreatePrimitive(PrimitiveType.Cube);
             sea.name = "Sea";
             sea.transform.position = new Vector3(0f, -4f, 0f);
-            sea.transform.localScale = new Vector3(160f, 8f, 160f);
-            GrayboxMaterials.ApplyWater(sea, new Color(0.1f, 0.55f, 1f, 0.6f));
+            sea.transform.localScale = new Vector3(700f, 8f, 700f);
+            GrayboxMaterials.ApplyWater(sea, new Color(0.1f, 0.55f, 1f, 1f), true);
             sea.GetComponent<BoxCollider>().isTrigger = true;
             sea.AddComponent<WaterVolume>();
-            Box("Seabed", new Vector3(0f, -8.5f, 0f), new Vector3(160f, 1f, 160f), new Color(0.05f, 0.25f, 0.6f));
+            Box("Seabed", new Vector3(0f, -8.5f, 0f), new Vector3(700f, 1f, 700f), new Color(0.1f, 0.45f, 0.9f));
 
             // ---- The floating circuit (counter-clockwise, 8 m wide). Deck tops sit at y 0.6, 0.6 m above the sea.
             // Bottom and top straights include the four corners. The left straight is a gap crossed on discs.
@@ -94,6 +94,9 @@ namespace Badeland.EditorTools
             // far side (x -12 to -8, z 14 to 18) where the trap door sits.
             Deck("Deck Bottom West (start)", new Vector3(-7.5f, 0f, -14f), new Vector3(33f, 1.2f, 8f));
             Deck("Deck Bottom East", new Vector3(20.5f, 0f, -14f), new Vector3(7f, 1.2f, 8f));
+            // The big start/finish platform: a wide plaza south of the bottom straight. The laps start and end here,
+            // and the monster fight happens here too.
+            Deck("Start Plaza", new Vector3(-11f, 0f, -26f), new Vector3(34f, 1.2f, 16f));
             Deck("Deck Top West", new Vector3(-18f, 0f, 14f), new Vector3(12f, 1.2f, 8f));
             Deck("Deck Top Middle", new Vector3(-10f, 0f, 12f), new Vector3(4f, 1.2f, 4f));
             Deck("Deck Top East", new Vector3(8f, 0f, 14f), new Vector3(32f, 1.2f, 8f));
@@ -102,18 +105,27 @@ namespace Badeland.EditorTools
                 Disc("Stepping Disc " + (i + 1), new Vector3(-20f, 0f, -6.6f + i * 6.6f), 4.5f);
 
             // Orange borders (visual only) along the outer edge of each deck.
-            Trim("Trim Bottom West", new Vector3(-7.5f, 0.62f, -17.8f), new Vector3(33f, 0.1f, 0.4f));
+            Trim("Trim Bottom Mid", new Vector3(7.5f, 0.62f, -17.8f), new Vector3(3f, 0.1f, 0.4f));
+            Trim("Trim Plaza South", new Vector3(-11f, 0.62f, -33.8f), new Vector3(34f, 0.1f, 0.4f));
+            Trim("Trim Plaza West", new Vector3(-27.8f, 0.62f, -26f), new Vector3(0.4f, 0.1f, 16f));
+            Trim("Trim Plaza East", new Vector3(5.8f, 0.62f, -26f), new Vector3(0.4f, 0.1f, 16f));
             Trim("Trim Bottom East", new Vector3(20.5f, 0.62f, -17.8f), new Vector3(7f, 0.1f, 0.4f));
             Trim("Trim Top West", new Vector3(-18f, 0.62f, 17.8f), new Vector3(12f, 0.1f, 0.4f));
             Trim("Trim Top East", new Vector3(8f, 0.62f, 17.8f), new Vector3(32f, 0.1f, 0.4f));
             Trim("Trim Right", new Vector3(23.8f, 0.62f, 0f), new Vector3(0.4f, 0.1f, 20f));
 
             // Green inflatable bumper posts on the outer corners, and beach balls as soft obstacles.
-            foreach (var corner in new[] { new Vector2(22.4f, 16.4f), new Vector2(-22.4f, 16.4f), new Vector2(22.4f, -16.4f), new Vector2(-22.4f, -16.4f) })
+            foreach (var corner in new[]
+            {
+                new Vector2(22.4f, 16.4f), new Vector2(-22.4f, 16.4f), new Vector2(22.4f, -16.4f),
+                new Vector2(-26.6f, -32.6f), new Vector2(4.6f, -32.6f), new Vector2(-26.6f, -19.4f), new Vector2(4.6f, -19.4f),
+            })
                 Cyl("Bumper Post", new Vector3(corner.x, 1.6f, corner.y), new Vector3(1.6f, 1f, 1.6f), new Color(0.35f, 0.8f, 0.3f));
             Ball("Beach Ball", new Vector3(-12f, 1.85f, -17f), 2.5f, new Color(1f, 0.3f, 0.3f), true);
             Ball("Beach Ball", new Vector3(4f, 1.85f, -11f), 2.5f, new Color(1f, 0.9f, 0.2f), true);
             Ball("Beach Ball", new Vector3(6f, 1.85f, 16.5f), 2.5f, new Color(0.3f, 0.5f, 1f), true);
+            Ball("Beach Ball", new Vector3(-22f, 1.85f, -30f), 2.4f, new Color(0.3f, 0.9f, 0.4f), true);
+            Ball("Beach Ball", new Vector3(-1f, 1.85f, -31f), 2.4f, new Color(1f, 0.5f, 0.15f), true);
             Ball("Beach Ball (floating)", new Vector3(30f, 0.6f, 6f), 2.5f, new Color(1f, 0.4f, 0.8f), false).AddComponent<Bobber>();
             Ball("Beach Ball (floating)", new Vector3(-30f, 0.6f, -12f), 2.5f, new Color(0.3f, 0.9f, 0.4f), false).AddComponent<Bobber>();
 
@@ -127,7 +139,8 @@ namespace Badeland.EditorTools
             var cpRight = Gate("Checkpoint 1 (right)", new Vector3(20f, 0f, 0f), 0f, yellow);
             var cpTop = Gate("Checkpoint 2 (top)", new Vector3(0f, 0f, 14f), -90f, yellow);
             var cpLeft = Gate("Checkpoint 3 (left)", new Vector3(-20f, 0f, 0f), 180f, yellow);
-            var finish = Gate("Finish line", new Vector3(0f, 0f, -14f), 90f, new Color(0.2f, 0.9f, 0.3f));
+            var finish = Gate("Finish line", new Vector3(0f, 0f, -22f), 90f, new Color(0.2f, 0.9f, 0.3f), 24f);
+            CheckeredLine(new Vector3(0f, 0.61f, -22f), 24);
 
             var trackerGo = new GameObject("LapTracker");
             var tracker = trackerGo.AddComponent<LapTracker>();
@@ -297,20 +310,37 @@ namespace Badeland.EditorTools
         }
 
         // A flag gate: two flag poles 8 m apart with a banner between them, facing the direction of travel.
-        static Checkpoint Gate(string name, Vector3 position, float yawDegrees, Color flagColor)
+        // A start/finish line painted on the deck: two columns of black and white tiles across the whole width.
+        static void CheckeredLine(Vector3 center, int tilesAcross)
+        {
+            var root = new GameObject("Checkered Line");
+            for (int i = 0; i < tilesAcross; i++)
+            {
+                for (int column = 0; column < 2; column++)
+                {
+                    bool white = (i + column) % 2 == 0;
+                    var tile = Box("Tile", new Vector3(center.x - 0.5f + column, center.y, center.z - tilesAcross * 0.5f + i + 0.5f),
+                        new Vector3(1f, 0.02f, 1f), white ? new Color(0.97f, 0.97f, 0.97f) : new Color(0.08f, 0.08f, 0.1f));
+                    Object.DestroyImmediate(tile.GetComponent<Collider>());
+                    tile.transform.SetParent(root.transform, true);
+                }
+            }
+        }
+
+        static Checkpoint Gate(string name, Vector3 position, float yawDegrees, Color flagColor, float width = 8f)
         {
             var root = new GameObject(name);
             root.transform.position = position;
             root.transform.rotation = Quaternion.Euler(0f, yawDegrees, 0f);
             var gate = root.AddComponent<Checkpoint>();
-            gate.width = 8f;
+            gate.width = width;
 
             for (int side = -1; side <= 1; side += 2)
             {
                 var pole = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
                 pole.name = "Flag Pole";
                 pole.transform.SetParent(root.transform, false);
-                pole.transform.localPosition = new Vector3(side * 4f, 2f, 0f);
+                pole.transform.localPosition = new Vector3(side * width * 0.5f, 2f, 0f);
                 pole.transform.localScale = new Vector3(0.25f, 2.6f, 0.25f); // 5.2 m tall, from below the water up
                 Object.DestroyImmediate(pole.GetComponent<Collider>());
                 GrayboxMaterials.Tint(pole, new Color(0.95f, 0.95f, 0.95f));
@@ -318,7 +348,7 @@ namespace Badeland.EditorTools
                 var flag = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 flag.name = "Flag";
                 flag.transform.SetParent(root.transform, false);
-                flag.transform.localPosition = new Vector3(side * 4f - side * 0.7f, 4.2f, 0f);
+                flag.transform.localPosition = new Vector3(side * width * 0.5f - side * 0.7f, 4.2f, 0f);
                 flag.transform.localScale = new Vector3(1.4f, 0.9f, 0.05f);
                 Object.DestroyImmediate(flag.GetComponent<Collider>());
                 GrayboxMaterials.Tint(flag, flagColor);
@@ -329,7 +359,7 @@ namespace Badeland.EditorTools
             banner.name = "Banner";
             banner.transform.SetParent(root.transform, false);
             banner.transform.localPosition = new Vector3(0f, 4.4f, 0f);
-            banner.transform.localScale = new Vector3(8f, 0.3f, 0.05f);
+            banner.transform.localScale = new Vector3(width, 0.3f, 0.05f);
             Object.DestroyImmediate(banner.GetComponent<Collider>());
             GrayboxMaterials.Tint(banner, flagColor);
 

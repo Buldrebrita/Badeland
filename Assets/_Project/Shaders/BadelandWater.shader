@@ -1,4 +1,4 @@
-// A simple, bright, cartoon sea. Transparent blue that gets deeper at glancing angles, with soft white ripple
+// A simple, bright, cartoon sea. Opaque for the big sea, see-through for small flooded rooms (set by the material). Transparent blue that gets deeper at glancing angles, with soft white ripple
 // lines that drift across the surface (the pattern is drawn in world space, so every water box lines up).
 // No depth texture or special URP settings needed. Used for the sea, the pool and the secret room's flood.
 Shader "Badeland/Water"
@@ -11,6 +11,9 @@ Shader "Badeland/Water"
         _RippleScale ("Ripple Scale", Float) = 0.3
         _RippleSpeed ("Ripple Speed", Float) = 0.25
         _RippleStrength ("Ripple Strength", Range(0, 1)) = 0.55
+        [HideInInspector] _SrcBlend ("Src Blend", Float) = 5
+        [HideInInspector] _DstBlend ("Dst Blend", Float) = 10
+        [HideInInspector] _ZWrite ("ZWrite", Float) = 0
     }
 
     SubShader
@@ -22,8 +25,8 @@ Shader "Badeland/Water"
             Name "Forward"
             Tags { "LightMode" = "UniversalForward" }
 
-            Blend SrcAlpha OneMinusSrcAlpha
-            ZWrite Off
+            Blend [_SrcBlend] [_DstBlend]
+            ZWrite [_ZWrite]
             Cull Back
 
             HLSLPROGRAM

@@ -9,16 +9,17 @@ using UnityEngine.InputSystem;
 namespace Badeland.World
 {
     /// <summary>
-    /// The end of Chapter 1. Once every player has finished the laps and stands on the big platform for a few
-    /// seconds, the party game suddenly turns: the light drops, the sea darkens and a sea monster attacks. Players
-    /// stay fully in control and can run, jump and swim away, but within <see cref="duration"/> seconds everyone is
-    /// swallowed, one by one. Then the screen fades to black.
+    /// The end of Chapter 1. Once every player has finished the laps and stands on the big start/finish platform for
+    /// a few seconds, the party game suddenly turns: the light drops, the sea darkens and a giant sea monster heaves
+    /// out of the water beside the platform, its eyes following the players. Players stay fully in control and can
+    /// run, jump and swim away, but within <see cref="duration"/> seconds everyone is swallowed, one by one.
+    /// Then the screen fades to black.
     ///
-    /// Attacks:
-    ///  - Tentacle slams: a red circle appears, then a tentacle crashes down. Anyone inside is knocked flying (funny).
-    ///  - Swallows: a red circle follows one player, locks, then the monster's mouth rises. Anyone inside is eaten.
-    ///    Run out of the circle in time and you live on.
-    ///  - The final swallow covers everything and cannot be escaped.
+    /// Attacks (all with a red/orange circle that shows where, and a warning before they land):
+    ///  - Slaps: a tentacle reaches in from the sea, looms over the circle, then slaps down. Knocks you flying.
+    ///  - Grabs: a thicker tentacle does the same, but anyone caught inside is grabbed and eaten.
+    ///    The circle follows one player, then locks; run out of it in time and you live on.
+    ///  - The final lunge: the monster's head lunges over the platform. Nobody escapes it.
     ///
     /// Everything follows the shared clock, so all players see the same attacks at the same moment. Each machine
     /// only decides whether its OWN player is hit.
@@ -26,6 +27,9 @@ namespace Badeland.World
     public class MonsterEncounter : MonoBehaviour
     {
         public static MonsterEncounter Instance { get; private set; }
+
+        /// <summary>True once the monster has struck.</summary>
+        public static bool Started => Instance != null && Instance._started;
 
         /// <summary>Set by the networking layer: true only on the host. Null offline (then this machine decides).</summary>
         public static Func<bool> IsAuthority;
@@ -37,12 +41,12 @@ namespace Badeland.World
 
         [Header("When it starts")]
         public LapTracker tracker;
-        [Tooltip("World centre and size of the big platform (the size's y is ignored).")]
+        [Tooltip("World centre and size of the big platform area where the fight happens (the size's y is ignored).")]
         public Vector3 platformCenter;
-        public Vector3 platformSize = new Vector3(14f, 1f, 11f);
+        public Vector3 platformSize = new Vector3(34f, 1f, 24f);
         public float platformTopY = 0.6f;
         [Tooltip("Everyone on the platform for this long, and the monster strikes.")]
-        [Min(0f)] public float celebrationSeconds = 3f;
+        [Min(0f)] public float celebrationSeconds = 5f;
         [Tooltip("If someone never gets there, it strikes anyway this long after the laps are done.")]
         [Min(5f)] public float fallbackSeconds = 40f;
 
@@ -54,9 +58,30 @@ namespace Badeland.World
         public Light sun;
         public Renderer seaRenderer;
         public GameObject telegraphTemplate;
-        public GameObject tentacleTemplate;
+        [Tooltip("One tentacle section (a sphere). Tentacles are chains of these.")]
+        public GameObject segmentTemplate;
         public GameObject mawTemplate;
         public GameObject head;
+        [Tooltip("The monster's eyes and pupils (same order). The pupils follow the players.")]
+        public Transform[] eyes;
+        public Transform[] pupils;
+        public float eyeRadius = 2.65f;
+        [Tooltip("Where the tentacles come out of the sea.")]
+        public Transform[] tentacleBases;
+        [Tooltip("How far the head rises out of the sea.")]
+        public float headRiseMeters = 34f;
+        [Tooltip("During the final lunge the head moves this far towards the platform (horizontally).")]
+        public float headLungeMeters = 22f;
+
+        const int SegmentsPerTentacle = 36;
+
+        class Tentacle
+        {
+            public GameObject root;
+            public Transform[] parts;
+            public Vector3 anchor;
+            public float thickness = 1f;
+        }
 
         class Attack
         {
@@ -67,11 +92,14 @@ namespace Badeland.World
             public bool final;
             public bool targeted;
             public int order;
+            public int baseIndex;
             public Vector3 spot;
 
             public GameObject disc;
+            public Tentacle tentacle;
             public GameObject effect;
             public Vector3 center;
+            public Vector3 hover;
             public float groundY;
             public bool locked;
             public bool resolved;
@@ -90,6 +118,8 @@ namespace Badeland.World
         float _endAt = -1f;
         MaterialPropertyBlock _block;
 
+        Vector3 _headStart;
+
         // Look before the strike, so we know what to fade from.
         Color _sunColor0, _sky0, _equator0, _ground0, _fogColor0;
         float _sunIntensity0, _fogDensity0;
@@ -101,8 +131,9 @@ namespace Badeland.World
         {
             Instance = this;
             _block = new MaterialPropertyBlock();
-            foreach (var t in new[] { telegraphTemplate, tentacleTemplate, mawTemplate, head })
+            foreach (var t in new[] { telegraphTemplate, segmentTemplate, mawTemplate })
                 if (t != null) t.SetActive(false);
+            if (head != null) _headStart = head.transform.position;
         }
 
         void OnDestroy()
@@ -125,6 +156,7 @@ namespace Badeland.World
 
             RefreshAlive();
             UpdateLook(e);
+            UpdateHead(e);
             UpdateAttacks(e);
             UpdateEnding(e);
         }
@@ -132,7 +164,7 @@ namespace Badeland.World
         void WaitForStrike()
         {
             bool lapsDone = tracker != null && tracker.AllFinished;
-            StatusText = lapsDone ? "All laps done! Cross the new bridge to the big platform." : "";
+            StatusText = lapsDone ? "Everyone is done! Stay on the big platform..." : "";
 
             bool authority = IsAuthority == null || IsAuthority();
             if (!authority || _triggerSent) return;
@@ -198,6 +230,12 @@ namespace Badeland.World
             _fogDensity0 = RenderSettings.fogDensity;
             if (seaRenderer != null) _seaMaterial = seaRenderer.material; // our own copy, so the shared asset is untouched
 
+            if (head != null)
+            {
+                head.SetActive(true);
+                head.transform.position = _headStart;
+            }
+
             SetUpRumble();
         }
 
@@ -207,12 +245,13 @@ namespace Badeland.World
         {
             var rng = new System.Random(20260);
             _attacks.Clear();
+            int bases = Mathf.Max(1, tentacleBases != null ? tentacleBases.Length : 1);
 
-            // Tentacle slams every 1.2 s: half aimed at a player, half at a random spot near the platform.
+            // Slaps every 1.2 s: half aimed at a player, half at a random spot on or near the platform.
             int index = 0;
-            for (float t = 1.5f; t < 16.5f; t += 1.2f, index++)
+            for (float t = 1.8f; t < 16.5f; t += 1.2f, index++)
             {
-                var a = new Attack { time = t, telegraph = 1.1f, radius = 2.4f, grab = false };
+                var a = new Attack { time = t, telegraph = 1.2f, radius = 2.6f, grab = false, baseIndex = index % bases };
                 if (index % 2 == 0)
                 {
                     a.targeted = true;
@@ -221,23 +260,23 @@ namespace Badeland.World
                 else
                 {
                     a.spot = new Vector3(
-                        platformCenter.x + ((float)rng.NextDouble() * 2f - 1f) * (platformSize.x * 0.5f + 4f), 0f,
-                        platformCenter.z + ((float)rng.NextDouble() * 2f - 1f) * (platformSize.z * 0.5f + 4f));
+                        platformCenter.x + ((float)rng.NextDouble() * 2f - 1f) * (platformSize.x * 0.5f + 3f), 0f,
+                        platformCenter.z + ((float)rng.NextDouble() * 2f - 1f) * (platformSize.z * 0.5f + 3f));
                 }
                 _attacks.Add(a);
             }
 
-            // Swallows, one target each, faster and wider every time.
-            float[] grabTimes = { 5.5f, 8.5f, 11.5f, 14.5f };
-            float[] grabTelegraph = { 2.2f, 2.0f, 1.8f, 1.6f };
+            // Grabs, one target each, faster and wider every time.
+            float[] grabTimes = { 6.0f, 9.0f, 12.0f, 14.8f };
+            float[] grabTelegraph = { 2.3f, 2.1f, 1.9f, 1.7f };
             float[] grabRadius = { 3.0f, 3.3f, 3.6f, 4.0f };
             for (int i = 0; i < grabTimes.Length; i++)
-                _attacks.Add(new Attack { time = grabTimes[i], telegraph = grabTelegraph[i], radius = grabRadius[i], grab = true, targeted = true, order = i });
+                _attacks.Add(new Attack { time = grabTimes[i], telegraph = grabTelegraph[i], radius = grabRadius[i], grab = true, targeted = true, order = i, baseIndex = (i + 1) % bases });
 
-            // The final swallow: covers everything and ends at exactly `duration`.
+            // The final lunge: covers everything and ends at exactly `duration`.
             _attacks.Add(new Attack
             {
-                time = duration - 3.5f, telegraph = 3.5f, radius = 18f, grab = true, final = true,
+                time = duration - 3.5f, telegraph = 3.5f, radius = 20f, grab = true, final = true,
                 center = platformCenter, spot = platformCenter,
             });
         }
@@ -274,7 +313,7 @@ namespace Badeland.World
 
                 if (a.resolved)
                 {
-                    AnimateEffect(a, e - a.resolvedAt);
+                    AnimateAfterHit(a, e - a.resolvedAt);
                     continue;
                 }
 
@@ -286,6 +325,11 @@ namespace Badeland.World
                     a.disc.SetActive(true);
                     a.disc.name = "Telegraph";
                     if (!a.targeted) a.center = a.spot;
+                }
+
+                if (a.tentacle == null && !a.final && segmentTemplate != null && tentacleBases != null && tentacleBases.Length > 0)
+                {
+                    a.tentacle = MakeTentacle(tentacleBases[a.baseIndex % tentacleBases.Length].position, a.grab);
                 }
 
                 // A targeted circle follows its player, then locks so there is time to run.
@@ -316,6 +360,17 @@ namespace Badeland.World
                     }
                 }
 
+                // The tentacle rises out of the sea and looms over the circle.
+                if (a.tentacle != null)
+                {
+                    float rise = Mathf.SmoothStep(0f, 1f, local / 0.7f);
+                    float height = Mathf.Lerp(16f, 10f, local / a.telegraph);
+                    float sway = Mathf.Sin(local * 5f) * 0.8f;
+                    a.hover = a.center + new Vector3(sway, height, 0f);
+                    Vector3 tip = Vector3.Lerp(a.tentacle.anchor + Vector3.up * 1f, a.hover, rise);
+                    PoseTentacle(a.tentacle, tip, Mathf.Lerp(3f, 14f, rise));
+                }
+
                 if (local >= a.telegraph) Resolve(a, e);
             }
         }
@@ -330,16 +385,7 @@ namespace Badeland.World
 
             if (a.final)
             {
-                foreach (var p in PlayerController.All)
-                    if (p.IsLocal && !p.IsEaten) p.Eat();
-                if (cam != null) cam.Shake(1.2f, 1.6f);
-                a.finished = true;
-                return;
-            }
-
-            var players = PlayerController.All;
-            if (a.grab)
-            {
+                // The head lunges over the platform and its mouth opens.
                 if (mawTemplate != null)
                 {
                     a.effect = Instantiate(mawTemplate);
@@ -348,39 +394,33 @@ namespace Badeland.World
                     a.effect.transform.localScale = new Vector3(a.radius * 2f, 2f, a.radius * 2f);
                 }
 
-                for (int i = 0; i < players.Count; i++)
-                {
-                    var p = players[i];
-                    if (!p.IsLocal || p.IsEaten) continue;
-                    if (InCircle(p.transform.position, a.center, a.radius) && p.FeetY() < a.groundY + 3.5f)
-                        p.Eat(); // swallowed
-                }
-
-                if (cam != null) cam.Shake(0.5f, 0.45f);
+                foreach (var p in PlayerController.All)
+                    if (p.IsLocal && !p.IsEaten) p.Eat();
+                if (cam != null) cam.Shake(1.2f, 1.6f);
+                return;
             }
-            else
+
+            var players = PlayerController.All;
+            for (int i = 0; i < players.Count; i++)
             {
-                if (tentacleTemplate != null)
+                var p = players[i];
+                if (!p.IsLocal || p.IsEaten) continue;
+                if (!InCircle(p.transform.position, a.center, a.radius) || p.FeetY() > a.groundY + 3.5f) continue;
+
+                if (a.grab)
                 {
-                    a.effect = Instantiate(tentacleTemplate);
-                    a.effect.SetActive(true);
-                    a.effect.name = "Tentacle";
+                    p.Eat(); // grabbed and dragged under
                 }
-
-                for (int i = 0; i < players.Count; i++)
+                else
                 {
-                    var p = players[i];
-                    if (!p.IsLocal || p.IsEaten) continue;
-                    if (!InCircle(p.transform.position, a.center, a.radius) || p.FeetY() > a.groundY + 3f) continue;
-
                     Vector3 away = p.transform.position - a.center;
                     away.y = 0f;
                     if (away.sqrMagnitude < 0.01f) away = Vector3.right;
-                    p.Knock(away.normalized * 12f, 9f); // flung into the sea with a splash
+                    p.Knock(away.normalized * 12f, 9f); // slapped into the sea with a splash
                 }
-
-                if (cam != null) cam.Shake(0.3f, 0.3f);
             }
+
+            if (cam != null) cam.Shake(a.grab ? 0.5f : 0.3f, a.grab ? 0.45f : 0.3f);
         }
 
         static bool InCircle(Vector3 pos, Vector3 center, float radius)
@@ -389,27 +429,146 @@ namespace Badeland.World
             return dx * dx + dz * dz <= radius * radius;
         }
 
-        void AnimateEffect(Attack a, float age)
+        // After the hit: the tentacle stays down for a moment, then slides back into the sea.
+        void AnimateAfterHit(Attack a, float age)
+        {
+            if (a.final)
+            {
+                AnimateMouth(a, age);
+                return;
+            }
+
+            if (a.tentacle == null) { a.finished = true; return; }
+
+            Vector3 ground = new Vector3(a.center.x, a.groundY + 0.5f, a.center.z);
+            Vector3 home = a.tentacle.anchor + Vector3.up * 1f;
+
+            Vector3 tip;
+            float arch;
+            if (age < 0.12f)
+            {
+                float k = age / 0.12f;
+                tip = Vector3.Lerp(a.hover, ground, k * k); // the slap
+                arch = Mathf.Lerp(14f, 2f, k);
+            }
+            else if (age < 0.9f)
+            {
+                tip = ground;
+                arch = 2f;
+            }
+            else
+            {
+                float k = Mathf.Clamp01((age - 0.9f) / 0.8f);
+                tip = Vector3.Lerp(ground, home, k);
+                arch = Mathf.Lerp(2f, 6f, k);
+            }
+
+            PoseTentacle(a.tentacle, tip, arch);
+
+            if (age > 1.8f)
+            {
+                Destroy(a.tentacle.root);
+                a.tentacle = null;
+                a.finished = true;
+            }
+        }
+
+        void AnimateMouth(Attack a, float age)
         {
             if (a.effect == null) { a.finished = true; return; }
 
-            // Shoots up fast, holds, then sinks back.
-            float up = age < 0.15f ? 1f - Mathf.Pow(1f - age / 0.15f, 2f)
-                     : age < 0.6f ? 1f
-                     : Mathf.Clamp01(1f - (age - 0.6f) / 0.5f);
+            float up = age < 0.3f ? 1f - Mathf.Pow(1f - age / 0.3f, 2f) : 1f;
+            a.effect.transform.position = new Vector3(a.center.x, a.groundY - 2f + up * 3.2f, a.center.z);
+            // The final mouth stays: the screen fades to black over it.
+        }
 
-            float height = a.grab ? 4f : 6.4f;
-            float rise = a.grab ? 3.2f : 5.4f;
-            a.effect.transform.position = new Vector3(a.center.x, a.groundY - height * 0.5f + up * rise, a.center.z);
+        // ------------------------------------------------------------------ tentacles
 
-            if (a.grab) a.effect.transform.localScale = new Vector3(a.radius * 2f, height * 0.5f, a.radius * 2f);
-            else a.effect.transform.localScale = new Vector3(1.4f, height * 0.5f, 1.4f);
-
-            if (age > 1.2f)
+        Tentacle MakeTentacle(Vector3 anchor, bool grab)
+        {
+            var t = new Tentacle
             {
-                Destroy(a.effect);
-                a.effect = null;
-                a.finished = true;
+                anchor = anchor,
+                thickness = grab ? 1.4f : 1f,
+                root = new GameObject(grab ? "Grabbing Tentacle" : "Slapping Tentacle"),
+                parts = new Transform[SegmentsPerTentacle],
+            };
+
+            Color color = grab ? new Color(0.62f, 0.1f, 0.3f) : new Color(0.32f, 0.12f, 0.52f);
+            var block = new MaterialPropertyBlock();
+            block.SetColor("_BaseColor", color);
+            block.SetColor("_Color", color);
+
+            for (int i = 0; i < SegmentsPerTentacle; i++)
+            {
+                var part = Instantiate(segmentTemplate, t.root.transform);
+                part.SetActive(true);
+                part.name = "Section";
+                var r = part.GetComponentInChildren<Renderer>();
+                if (r != null) r.SetPropertyBlock(block);
+                t.parts[i] = part.transform;
+            }
+
+            PoseTentacle(t, anchor + Vector3.up, 3f);
+            return t;
+        }
+
+        // Lays the sections along a smooth curve from the sea to the tip. Thick at the root, thin at the tip.
+        static void PoseTentacle(Tentacle t, Vector3 tip, float arch)
+        {
+            Vector3 b = t.anchor;
+            Vector3 control = (b + tip) * 0.5f + Vector3.up * arch;
+            int n = t.parts.Length;
+            for (int i = 0; i < n; i++)
+            {
+                float s = i / (n - 1f);
+                float u = 1f - s;
+                Vector3 p = u * u * b + 2f * u * s * control + s * s * tip;
+                t.parts[i].position = p;
+                t.parts[i].localScale = Vector3.one * (Mathf.Lerp(2.9f, 1.1f, s) * t.thickness);
+            }
+        }
+
+        // ------------------------------------------------------------------ the monster itself
+
+        void UpdateHead(float e)
+        {
+            if (head == null) return;
+
+            // Heaves up out of the water in about 2.5 seconds, starting right away.
+            float rise = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(e / 2.5f));
+            Vector3 pos = _headStart + Vector3.up * (headRiseMeters * rise);
+
+            // The final lunge towards the platform.
+            float lungeStart = duration - 3.5f;
+            if (e > lungeStart)
+            {
+                float k = Mathf.SmoothStep(0f, 1f, (e - lungeStart) / 3.5f);
+                Vector3 toward = platformCenter - new Vector3(_headStart.x, platformCenter.y, _headStart.z);
+                toward.y = 0f;
+                pos += toward.normalized * (headLungeMeters * k);
+            }
+
+            // A slow, menacing sway.
+            pos += new Vector3(0f, Mathf.Sin(e * 1.3f) * 0.6f, 0f);
+            head.transform.position = pos;
+
+            // The pupils follow the nearest player: the monster is looking at them.
+            if (eyes == null || pupils == null) return;
+            Vector3 lookAt = platformCenter;
+            float best = float.MaxValue;
+            for (int i = 0; i < _alive.Count; i++)
+            {
+                float d = (_alive[i].transform.position - head.transform.position).sqrMagnitude;
+                if (d < best) { best = d; lookAt = _alive[i].transform.position + Vector3.up; }
+            }
+
+            int count = Mathf.Min(eyes.Length, pupils.Length);
+            for (int i = 0; i < count; i++)
+            {
+                if (eyes[i] == null || pupils[i] == null) continue;
+                Vector3 dir = (lookAt - eyes[i].position).normalized;
+                pupils[i].position = eyes[i].position + dir * (eyeRadius * 0.62f);
             }
         }
 
@@ -434,30 +593,21 @@ namespace Badeland.World
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Exponential;
             RenderSettings.fogColor = Color.Lerp(_fogColor0, new Color(0.04f, 0.08f, 0.16f), k);
-            RenderSettings.fogDensity = Mathf.Lerp(_fogDensity0, 0.012f, k);
+            RenderSettings.fogDensity = Mathf.Lerp(_fogDensity0, 0.008f, k);
 
             if (_seaMaterial != null)
             {
-                SetColor(_seaMaterial, "_ShallowColor", Color.Lerp(new Color(0.2f, 0.75f, 1f, 0.65f), new Color(0.03f, 0.12f, 0.25f, 0.85f), k));
-                SetColor(_seaMaterial, "_DeepColor", Color.Lerp(new Color(0.03f, 0.3f, 0.85f, 0.85f), new Color(0.01f, 0.04f, 0.12f, 0.95f), k));
-                SetColor(_seaMaterial, "_BaseColor", Color.Lerp(new Color(0.1f, 0.55f, 1f, 0.6f), new Color(0.02f, 0.08f, 0.2f, 0.85f), k));
-            }
-
-            if (head != null)
-            {
-                bool show = e > 2f;
-                if (head.activeSelf != show) head.SetActive(show);
-                float rise = Mathf.SmoothStep(0f, 1f, (e - 2f) / 12f);
-                Vector3 p = head.transform.position;
-                head.transform.position = new Vector3(p.x, Mathf.Lerp(-14f, 6f, rise), p.z);
+                SetColor(_seaMaterial, "_ShallowColor", Color.Lerp(new Color(0.12f, 0.66f, 1f, 1f), new Color(0.03f, 0.12f, 0.25f, 1f), k));
+                SetColor(_seaMaterial, "_DeepColor", Color.Lerp(new Color(0.03f, 0.34f, 0.9f, 1f), new Color(0.01f, 0.04f, 0.12f, 1f), k));
+                SetColor(_seaMaterial, "_BaseColor", Color.Lerp(new Color(0.1f, 0.55f, 1f, 1f), new Color(0.02f, 0.08f, 0.2f, 1f), k));
             }
 
             if (_rumble != null) _rumble.volume = Mathf.Lerp(0f, 0.9f, Mathf.Clamp01(e / 1.5f));
 
             // The text shown while watching.
             StatusText = "";
-            foreach (var p in PlayerController.All)
-                if (p.IsLocal && p.IsEaten) StatusText = "Swallowed! Watching your friends...";
+            foreach (var player in PlayerController.All)
+                if (player.IsLocal && player.IsEaten) StatusText = "Swallowed! Watching your friends...";
         }
 
         static void SetColor(Material m, string property, Color c)

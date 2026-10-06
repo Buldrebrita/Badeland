@@ -25,13 +25,29 @@ namespace Badeland.World
             if (me == null) return;
 
             string lapText = "";
+            bool iFinished = false;
             if (tracker != null)
             {
-                lapText = tracker.AllFinished
-                    ? "Finished! (the monster comes here later)"
+                iFinished = tracker.HasFinished(me);
+                lapText = iFinished
+                    ? "Finished!"
                     : "Lap " + Mathf.Min(tracker.LapOf(me), tracker.totalLaps) + " / " + tracker.totalLaps;
             }
             GUI.Label(new Rect(20, 15, 900, 40), lapText, _style);
+
+            // A big banner the moment you finish your last lap, until the monster strikes.
+            if (iFinished && !MonsterEncounter.Started)
+            {
+                var big = new GUIStyle(_style) { fontSize = 80, alignment = TextAnchor.MiddleCenter };
+                big.normal.textColor = new Color(1f, 0.92f, 0.25f);
+                GUI.Label(new Rect(0, Screen.height * 0.18f, Screen.width, 110), "FINISHED!", big);
+
+                var sub = new GUIStyle(_style) { fontSize = 30, alignment = TextAnchor.MiddleCenter };
+                string message = tracker.AllFinished
+                    ? "Everyone is done! Party time on the big platform..."
+                    : "Waiting for the others...  (" + tracker.FinishedCount + " / " + PlayerController.All.Count + " finished)";
+                GUI.Label(new Rect(0, Screen.height * 0.18f + 100, Screen.width, 50), message, sub);
+            }
 
             var carriers = FishCarrier.Active;
             FishCarrier mine = null;

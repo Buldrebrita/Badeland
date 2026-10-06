@@ -43,6 +43,18 @@ namespace Badeland.World
         public int LapOf(PlayerController player) =>
             _progress.TryGetValue(player, out var p) ? p.lap : 1;
 
+        /// <summary>How many players have completed all their laps.</summary>
+        public int FinishedCount
+        {
+            get
+            {
+                int n = 0;
+                foreach (var p in _progress.Values)
+                    if (p.finished) n++;
+                return n;
+            }
+        }
+
         public bool HasFinished(PlayerController player) =>
             _progress.TryGetValue(player, out var p) && p.finished;
 

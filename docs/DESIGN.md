@@ -152,10 +152,10 @@ Ranking: 1 star completed, 2 stars good performance, 3 stars perfect performance
 
 Beats:
 
-1. **Calm.** The party finishes the laps, a bridge inflates, and everyone gathers on a large floating inflatable platform in the middle of the sea. A moment of celebration.
+1. **Calm.** The laps start and end on one big, clear start/finish platform. The party finishes the third lap there, celebrates for a few seconds and is already in place.
 2. **Strike (a few seconds only).** With no earlier warning, the light drops, the sea darkens, a low rumble starts and the camera shakes.
 3. **Dodge (up to 20 seconds).** Players stay fully in control: run, jump, swim. A sea monster attacks with tentacle slams (they knock you flying into the sea, funny) and swallow attacks (a red circle follows one player, locks, then the mouth rises: step out in time and you live). Each attack is telegraphed a beat before it lands.
-4. **Escalation.** The attacks get faster and wider. The monster's huge head rises out of the sea behind the park.
+4. **Escalation.** The attacks get faster and wider. A giant monster heaves up out of the sea beside the platform, its eyes following the players, and slaps long tentacles down on them.
 5. **Eaten one by one, then everyone.** Players who are caught are swallowed one at a time and watch their friends. Whoever is left is swallowed by a final attack that cannot be escaped, at 20 seconds at the latest.
 6. **Cut to black.** "To be continued..."
 
