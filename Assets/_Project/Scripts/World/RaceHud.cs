@@ -31,12 +31,10 @@ namespace Badeland.World
             GUI.Label(new Rect(20, 15, 900, 40), lapText, _style);
 
             var carriers = FishCarrier.Active;
-            if (carriers.Count > 0)
+            if (carriers.Count > 0 && carriers[0].IsHolding)
             {
                 var c = carriers[0];
-                string fishText = c.IsHolding
-                    ? c.Held.displayName + "  " + Mathf.CeilToInt(c.TimeLeft) + "s" + (c.IsThrashing ? "  (slipping away!)" : "")
-                    : "No fish";
+                string fishText = c.Held.displayName + "  " + Mathf.CeilToInt(c.TimeLeft) + "s" + (c.IsThrashing ? "  (slipping away!)" : "");
                 GUI.Label(new Rect(20, 55, 900, 40), fishText, _style);
             }
         }

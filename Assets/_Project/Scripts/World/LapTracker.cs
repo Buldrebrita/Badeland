@@ -26,6 +26,7 @@ namespace Badeland.World
             public int next;
             public bool finished;
             public float lapStartTime;
+            public Vector3 lastPosition;
         }
 
         readonly Dictionary<PlayerController, Progress> _progress = new Dictionary<PlayerController, Progress>();
@@ -55,14 +56,20 @@ namespace Badeland.World
             for (int i = 0; i < players.Count; i++)
             {
                 var player = players[i];
+                Vector3 current = player.transform.position;
+
                 if (!_progress.TryGetValue(player, out var progress))
                 {
-                    progress = new Progress { lapStartTime = Time.time };
-                    _progress[player] = progress;
+                    _progress[player] = new Progress { lapStartTime = Time.time, lastPosition = current };
+                    continue;
                 }
 
+                Vector3 last = progress.lastPosition;
+                progress.lastPosition = current;
+
                 if (progress.finished) continue;
-                if (!checkpoints[progress.next].Contains(player.transform.position)) continue;
+                // The gate counts when the player's path since last frame crossed it (at any height).
+                if (!checkpoints[progress.next].Crossed(last, current)) continue;
 
                 progress.next++;
                 if (progress.next < checkpoints.Length) continue;
