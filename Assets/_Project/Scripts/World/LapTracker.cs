@@ -68,6 +68,8 @@ namespace Badeland.World
                 progress.lastPosition = current;
 
                 if (progress.finished) continue;
+                // A huge jump in one frame is a teleport (the secret room), not running through a gate.
+                if ((current - last).sqrMagnitude > 30f * 30f) continue;
                 // The gate counts when the player's path since last frame crossed it (at any height).
                 if (!checkpoints[progress.next].Crossed(last, current)) continue;
 
