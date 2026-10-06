@@ -3,7 +3,8 @@
     "rootNamespace": "Badeland.Networking",
     "references": [
         "Badeland.Runtime",
-        "Unity.Netcode.Runtime"
+        "Unity.Netcode.Runtime",
+        "Unity.Networking.Transport"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -97,13 +97,13 @@ namespace Badeland.Networking
             }
 
             // The camera frames every player.
-            var rig = FindFirstObjectByType<IsoCameraRig>();
+            var rig = IsoCameraRig.Instance;
             if (rig != null) rig.AddTarget(transform);
         }
 
         public override void OnNetworkDespawn()
         {
-            var rig = FindFirstObjectByType<IsoCameraRig>();
+            var rig = IsoCameraRig.Instance;
             if (rig != null) rig.RemoveTarget(transform);
 
             if (IsOwner)

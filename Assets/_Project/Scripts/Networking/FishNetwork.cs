@@ -22,7 +22,6 @@ namespace Badeland.Networking
         static FishNetwork _instance;
 
         readonly HashSet<long> _takenOnHost = new HashSet<long>();
-        FishJumper[] _jumpers;
 
         public static int IndexOf(FishSpecies species)
         {
@@ -39,7 +38,6 @@ namespace Badeland.Networking
         public override void OnNetworkSpawn()
         {
             _instance = this;
-            _jumpers = FindObjectsByType<FishJumper>(FindObjectsSortMode.None);
 
             // Everything that follows the shared clock now follows the network's.
             GameClock.Provider = () => NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening
@@ -79,11 +77,11 @@ namespace Badeland.Networking
         [ClientRpc]
         void ConfirmCatchClientRpc(int jumperId, int slot, ulong catcherClientId)
         {
-            if (_jumpers == null) return;
-            for (int i = 0; i < _jumpers.Length; i++)
+            var jumpers = FishJumper.All;
+            for (int i = 0; i < jumpers.Count; i++)
             {
-                if (_jumpers[i].Id != jumperId) continue;
-                _jumpers[i].ConfirmCaught(slot, catcherClientId == NetworkManager.LocalClientId);
+                if (jumpers[i].Id != jumperId) continue;
+                jumpers[i].ConfirmCaught(slot, catcherClientId == NetworkManager.LocalClientId);
                 return;
             }
         }

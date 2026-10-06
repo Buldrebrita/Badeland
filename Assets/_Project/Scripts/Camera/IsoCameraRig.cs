@@ -29,6 +29,16 @@ namespace Badeland.CameraSystem
         [Tooltip("Aim slightly above the targets' feet.")]
         [SerializeField] float focusHeight = 1f;
 
+        /// <summary>The camera rig in the scene (there is one). Players add themselves to it when they spawn.</summary>
+        public static IsoCameraRig Instance { get; private set; }
+
+        void Awake() => Instance = this;
+
+        void OnDestroy()
+        {
+            if (Instance == this) Instance = null;
+        }
+
         Vector3 _focusVelocity;
         float _distanceVelocity;
         Vector3 _focus;

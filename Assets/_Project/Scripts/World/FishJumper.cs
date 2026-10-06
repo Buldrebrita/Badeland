@@ -71,8 +71,15 @@ namespace Badeland.World
         Renderer _renderer;
         MaterialPropertyBlock _block;
 
+        static readonly System.Collections.Generic.List<FishJumper> AllJumpers = new System.Collections.Generic.List<FishJumper>();
+        /// <summary>Every fish area in the scene.</summary>
+        public static System.Collections.Generic.IReadOnlyList<FishJumper> All => AllJumpers;
+
+        void OnDestroy() => AllJumpers.Remove(this);
+
         void Awake()
         {
+            AllJumpers.Add(this);
             _block = new MaterialPropertyBlock();
             if (visual != null) _renderer = visual.GetComponentInChildren<Renderer>(true);
         }
