@@ -55,7 +55,7 @@ namespace Badeland.World
                 if (c.TryCatch(species))
                 {
                     _caughtCycle = cycle;
-                    visual.SetActive(false);
+                    if (visual != null) visual.SetActive(false);
                     return;
                 }
             }
