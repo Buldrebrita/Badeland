@@ -1,0 +1,212 @@
+using Badeland.CameraSystem;
+using Badeland.Player;
+using Badeland.World;
+using Unity.Netcode;
+using UnityEngine;
+
+namespace Badeland.Networking
+{
+    /// <summary>
+    /// Makes a player work online. Put on the player prefab next to a NetworkObject.
+    ///
+    /// Model for the spike: each player's own machine runs their own movement (so controls feel instant) and
+    /// publishes the result; everyone else sees a smoothed copy. Owner-authoritative is the simplest model and
+    /// fine for co-op with friends. It trusts every player, so it is not cheat-proof. See docs/S4_NETWORK.md.
+    /// </summary>
+    public class NetworkPlayer : NetworkBehaviour
+    {
+        /// <summary>What the owner publishes about their player, many times a second.</summary>
+        public struct PlayerState : INetworkSerializable, System.IEquatable<PlayerState>
+        {
+            public Vector3 position;
+            public float yaw;
+
+            public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+            {
+                serializer.SerializeValue(ref position);
+                serializer.SerializeValue(ref yaw);
+            }
+
+            public bool Equals(PlayerState other) => position == other.position && Mathf.Approximately(yaw, other.yaw);
+        }
+
+        [Header("Spawn (first player; the others line up beside them)")]
+        public Vector3 spawnOrigin = new Vector3(-8f, 1.8f, -16f);
+        public Vector3 spawnStep = new Vector3(0f, 0f, 1.6f);
+
+        [Tooltip("Smoothing speed for other players. Higher = snappier, lower = smoother.")]
+        public float remoteSmoothing = 18f;
+
+        readonly NetworkVariable<PlayerState> _state = new NetworkVariable<PlayerState>(
+            default, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+
+        // Index of the fish held (see FishNetwork.AllSpecies), or -1 for none.
+        readonly NetworkVariable<int> _heldFish = new NetworkVariable<int>(
+            -1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+
+        CharacterController _cc;
+        PlayerController _controller;
+        PlayerInputReader _input;
+        FishCarrier _carrier;
+        Renderer _bodyRenderer;
+        bool _hasState;
+
+        public ulong ClientId => OwnerClientId;
+        public bool HoldsFish => _heldFish.Value >= 0;
+
+        void Awake()
+        {
+            _cc = GetComponent<CharacterController>();
+            _controller = GetComponent<PlayerController>();
+            _input = GetComponent<PlayerInputReader>();
+            _carrier = GetComponent<FishCarrier>();
+            _bodyRenderer = GetComponentInChildren<Renderer>();
+        }
+
+        public override void OnNetworkSpawn()
+        {
+            Tint();
+
+            if (IsOwner)
+            {
+                // Place at this player's spot on the start line. The controller must be off while teleporting.
+                _cc.enabled = false;
+                transform.position = spawnOrigin + spawnStep * (int)(OwnerClientId % 4);
+                transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+                _cc.enabled = true;
+
+                _carrier.Caught += OnLocalCaught;
+                _carrier.Lost += OnLocalLost;
+            }
+            else
+            {
+                // Other players' avatars are moved by the network, never by local input or physics.
+                _controller.IsLocal = false;
+                _carrier.IsLocal = false;
+                _controller.enabled = false;
+                _input.enabled = false;
+                _cc.enabled = false;
+                _heldFish.OnValueChanged += OnHeldFishChanged;
+                OnHeldFishChanged(-1, _heldFish.Value);
+                _state.OnValueChanged += (_, v) => _hasState = true;
+                if (_state.Value.position != Vector3.zero)
+                {
+                    transform.position = _state.Value.position;
+                    _hasState = true;
+                }
+            }
+
+            // The camera frames every player.
+            var rig = FindFirstObjectByType<IsoCameraRig>();
+            if (rig != null) rig.AddTarget(transform);
+        }
+
+        public override void OnNetworkDespawn()
+        {
+            var rig = FindFirstObjectByType<IsoCameraRig>();
+            if (rig != null) rig.RemoveTarget(transform);
+
+            if (IsOwner)
+            {
+                _carrier.Caught -= OnLocalCaught;
+                _carrier.Lost -= OnLocalLost;
+            }
+            else
+            {
+                _heldFish.OnValueChanged -= OnHeldFishChanged;
+            }
+        }
+
+        void Update()
+        {
+            if (!IsSpawned) return;
+
+            if (IsOwner)
+            {
+                _state.Value = new PlayerState
+                {
+                    position = transform.position,
+                    yaw = transform.eulerAngles.y,
+                };
+                return;
+            }
+
+            if (!_hasState) return;
+
+            // Glide towards the latest published position instead of jumping between network updates.
+            var s = _state.Value;
+            float k = 1f - Mathf.Exp(-remoteSmoothing * Time.deltaTime);
+            transform.position = Vector3.Lerp(transform.position, s.position, k);
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0f, s.yaw, 0f), k);
+        }
+
+        // ---------------------------------------------------------------- fish
+
+        void OnLocalCaught(FishSpecies species)
+        {
+            _heldFish.Value = FishNetwork.IndexOf(species);
+        }
+
+        void OnLocalLost(FishSpecies species, FishLossReason reason)
+        {
+            _heldFish.Value = -1;
+        }
+
+        void OnHeldFishChanged(int previous, int current)
+        {
+            _carrier.MirrorHeld(FishNetwork.SpeciesAt(current));
+        }
+
+        /// <summary>Ask the host to pass a fish to another player. Called by the thrower's own machine.</summary>
+        public void RequestThrow(NetworkPlayer target, FishSpecies species, float seconds)
+        {
+            int index = FishNetwork.IndexOf(species);
+            if (index < 0) return;
+            ThrowFishServerRpc(target.OwnerClientId, index, seconds);
+        }
+
+        [ServerRpc]
+        void ThrowFishServerRpc(ulong targetClientId, int speciesIndex, float seconds)
+        {
+            // The host checks the target is still empty-handed, then forwards the fish to the target's own machine.
+            var targetObject = NetworkManager.SpawnManager.GetPlayerNetworkObject(targetClientId);
+            if (targetObject == null) return;
+
+            var target = targetObject.GetComponent<NetworkPlayer>();
+            if (target == null || target.HoldsFish) return;
+
+            var rpcParams = new ClientRpcParams
+            {
+                Send = new ClientRpcSendParams { TargetClientIds = new[] { targetClientId } }
+            };
+            target.ReceiveFishClientRpc(speciesIndex, seconds, rpcParams);
+        }
+
+        [ClientRpc]
+        void ReceiveFishClientRpc(int speciesIndex, float seconds, ClientRpcParams rpcParams = default)
+        {
+            // Runs on the target player's own machine.
+            if (!IsOwner) return;
+            _carrier.ReceiveThrown(FishNetwork.SpeciesAt(speciesIndex), seconds);
+        }
+
+        // ---------------------------------------------------------------- look
+
+        void Tint()
+        {
+            // A different colour per player so you can tell them apart.
+            Color[] colors =
+            {
+                new Color(1f, 0.55f, 0.15f), new Color(0.25f, 0.7f, 1f),
+                new Color(0.9f, 0.3f, 0.7f), new Color(0.5f, 0.85f, 0.3f),
+            };
+            Color c = colors[(int)(OwnerClientId % (ulong)colors.Length)];
+
+            if (_bodyRenderer == null) return;
+            var block = new MaterialPropertyBlock();
+            block.SetColor("_BaseColor", c);
+            block.SetColor("_Color", c);
+            _bodyRenderer.SetPropertyBlock(block);
+        }
+    }
+}

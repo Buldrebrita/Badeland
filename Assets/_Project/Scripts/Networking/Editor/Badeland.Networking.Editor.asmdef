@@ -1,0 +1,29 @@
+{
+    "name": "Badeland.Networking.Editor",
+    "rootNamespace": "Badeland.Networking.EditorTools",
+    "references": [
+        "Badeland.Runtime",
+        "Badeland.Editor",
+        "Badeland.Networking",
+        "Unity.Netcode.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "BADELAND_NETCODE"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.netcode.gameobjects",
+            "expression": "",
+            "define": "BADELAND_NETCODE"
+        }
+    ],
+    "noEngineReferences": false
+}

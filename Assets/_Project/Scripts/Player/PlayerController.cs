@@ -40,6 +40,9 @@ namespace Badeland.Player
 
         float _knockTimer;
 
+        /// <summary>False for other players' avatars in an online game. They are moved by the network, not by this script.</summary>
+        public bool IsLocal { get; set; } = true;
+
         public bool IsGrounded { get; private set; }
         public bool IsSwimming { get; private set; }
         /// <summary>Metres of the body below the water surface (0 when not in water).</summary>
@@ -53,14 +56,14 @@ namespace Badeland.Player
 
         void Awake()
         {
+            AllPlayers.Add(this); // in Awake, so remote players (whose controller is switched off) are still listed
             _cc = GetComponent<CharacterController>();
             _input = GetComponent<PlayerInputReader>();
             _modifiers = GetComponent<MovementModifiers>();
             if (visual == null) visual = transform;
         }
 
-        void OnEnable() => AllPlayers.Add(this);
-        void OnDisable() => AllPlayers.Remove(this);
+        void OnDestroy() => AllPlayers.Remove(this);
 
         void Update()
         {

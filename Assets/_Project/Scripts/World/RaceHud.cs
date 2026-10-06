@@ -18,22 +18,29 @@ namespace Badeland.World
                 _style.normal.textColor = Color.white;
             }
 
+            PlayerController me = null;
             var players = PlayerController.All;
-            if (players.Count == 0) return;
+            for (int i = 0; i < players.Count; i++)
+                if (players[i].IsLocal) { me = players[i]; break; }
+            if (me == null) return;
 
             string lapText = "";
             if (tracker != null)
             {
                 lapText = tracker.AllFinished
                     ? "Finished! (the monster comes here later)"
-                    : "Lap " + Mathf.Min(tracker.LapOf(players[0]), tracker.totalLaps) + " / " + tracker.totalLaps;
+                    : "Lap " + Mathf.Min(tracker.LapOf(me), tracker.totalLaps) + " / " + tracker.totalLaps;
             }
             GUI.Label(new Rect(20, 15, 900, 40), lapText, _style);
 
             var carriers = FishCarrier.Active;
-            if (carriers.Count > 0 && carriers[0].IsHolding)
+            FishCarrier mine = null;
+            for (int i = 0; i < carriers.Count; i++)
+                if (carriers[i].IsLocal) { mine = carriers[i]; break; }
+
+            if (mine != null && mine.IsHolding)
             {
-                var c = carriers[0];
+                var c = mine;
                 string fishText = c.Held.displayName + "  " + Mathf.CeilToInt(c.TimeLeft) + "s" + (c.IsThrashing ? "  (slipping away!)" : "");
                 GUI.Label(new Rect(20, 55, 900, 40), fishText, _style);
             }

@@ -1,3 +1,5 @@
+using System;
+using Badeland.Systems;
 using UnityEngine;
 
 namespace Badeland.World
@@ -52,6 +54,16 @@ namespace Badeland.World
             public FishSpecies species;
         }
 
+        /// <summary>
+        /// Set by the networking layer. When set, catching a fish is a request (jumper, slot) that the host
+        /// decides, so two players cannot catch the same fish. When null (offline) the catch is immediate.
+        /// </summary>
+        public static Action<FishJumper, int> CatchRequested;
+
+        /// <summary>Identifies this fish area on every machine (the seed, so give each area a different one).</summary>
+        public int Id => seed;
+
+        int _requestedSlot = -1;
         int _slot = int.MinValue;
         int _caughtSlot = -1;
         int _tintedSlot = -1;
@@ -69,15 +81,15 @@ namespace Badeland.World
         {
             if (speciesPool == null || speciesPool.Length == 0) return;
 
-            float now = Time.time;
-            int slot = Mathf.FloorToInt(now / slotSeconds);
+            double now = GameClock.Now;
+            int slot = (int)System.Math.Floor(now / slotSeconds);
             if (slot != _slot)
             {
                 _slot = slot;
                 _leap = Plan(slot);
             }
 
-            float u = (now - slot * slotSeconds - _leap.offset) / flightTime;
+            float u = (float)(now - slot * (double)slotSeconds - _leap.offset) / flightTime;
             bool flying = _leap.happens && _caughtSlot != slot && u >= 0f && u <= 1f;
 
             if (visual != null) visual.SetActive(flying);
@@ -102,8 +114,19 @@ namespace Badeland.World
             for (int i = 0; i < carriers.Count; i++)
             {
                 var c = carriers[i];
-                if (c.IsHolding) continue; // one fish at a time
+                if (!c.IsLocal || c.IsHolding) continue; // only our own player, one fish at a time
                 if ((c.transform.position - pos).sqrMagnitude > catchRadius * catchRadius) continue;
+
+                if (CatchRequested != null)
+                {
+                    // Online: ask the host. We hear back through ConfirmCaught.
+                    if (_requestedSlot != slot)
+                    {
+                        _requestedSlot = slot;
+                        CatchRequested(this, slot);
+                    }
+                    return;
+                }
 
                 if (c.TryCatch(_leap.species))
                 {
@@ -111,6 +134,29 @@ namespace Badeland.World
                     if (visual != null) visual.SetActive(false);
                     return;
                 }
+            }
+        }
+
+        /// <summary>The species that leaps in the given slot (the same on every machine).</summary>
+        public FishSpecies SpeciesForSlot(int slot) =>
+            speciesPool == null || speciesPool.Length == 0 ? null : Plan(slot).species;
+
+        /// <summary>
+        /// The host's verdict: the fish of this slot was caught, by our local player or by someone else.
+        /// Either way it is gone for everyone.
+        /// </summary>
+        public void ConfirmCaught(int slot, bool caughtByLocalPlayer)
+        {
+            _caughtSlot = slot;
+            if (visual != null) visual.SetActive(false);
+            if (!caughtByLocalPlayer) return;
+
+            var carriers = FishCarrier.Active;
+            for (int i = 0; i < carriers.Count; i++)
+            {
+                if (!carriers[i].IsLocal) continue;
+                carriers[i].TryCatch(SpeciesForSlot(slot));
+                break;
             }
         }
 

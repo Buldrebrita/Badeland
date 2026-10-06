@@ -40,6 +40,7 @@
 ## 3. Key technical approaches
 
 ### Networking
+- **Spike choice (S4): Netcode for GameObjects**, Unity's own package. Players publish their own movement (owner-authoritative, so controls feel instant) and see smoothed copies of each other. The host decides who caught a fish, and everything shared (jumping fish, the rotating bar) follows one network clock. Laps are tracked on each machine from the shared positions for now; the monster trigger will need a host decision later. See [S4_NETWORK.md](S4_NETWORK.md).
 - **Host-authoritative** (one player is the host). Local character uses client-side prediction so controls feel instant.
 - Keep the number of networked rigidbodies small. Prefer **deterministic or scripted** things (slides on splines, doors, mechanisms) over free physics.
 - Throwables, pushables and carried objects are the hard cases. Design them with an owner at any moment, and test them early.

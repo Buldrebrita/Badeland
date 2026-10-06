@@ -34,27 +34,38 @@ namespace Badeland.World
         /// <summary>True once the fish starts thrashing as a warning. Drive animation and UI from this.</summary>
         public bool IsThrashing => Held != null && TimeLeft <= Held.holdSeconds * Held.warnFraction;
 
+        /// <summary>False for other players' avatars online. Their fish state is mirrored from the network.</summary>
+        public bool IsLocal { get; set; } = true;
+
+        /// <summary>
+        /// Set by the networking layer. Called instead of handing a fish straight to a remote player; it
+        /// carries the fish over the network. Arguments: target, species, seconds. Return true if it took over.
+        /// </summary>
+        public static Func<FishCarrier, FishCarrier, FishSpecies, float, bool> NetworkThrow;
+
         public event Action<FishSpecies> Caught;
         /// <summary>Fired when the fish leaves for any reason (slipped, dropped, thrown).</summary>
         public event Action<FishSpecies, FishLossReason> Lost;
 
         void Awake()
         {
+            All.Add(this); // in Awake, so remote players (whose scripts are switched off) are still listed
             _modifiers = GetComponent<MovementModifiers>();
             if (aim == null) aim = transform;
             if (input == null) input = GetComponent<PlayerInputReader>();
         }
 
-        void OnEnable() => All.Add(this);
+        void OnDestroy() => All.Remove(this);
 
         void OnDisable()
         {
-            All.Remove(this);
-            if (Held != null) Release(FishLossReason.Dropped);
+            if (IsLocal && Held != null) Release(FishLossReason.Dropped);
         }
 
         void Update()
         {
+            if (!IsLocal) return;
+
             if (Held == null)
             {
                 return;
@@ -78,6 +89,21 @@ namespace Badeland.World
             if (Held != null || species == null) return false;
             Receive(species, species.holdSeconds);
             return true;
+        }
+
+        /// <summary>A fish arrived from another player (thrown at us). Online this is called on the target's own machine.</summary>
+        public bool ReceiveThrown(FishSpecies species, float seconds)
+        {
+            if (Held != null || species == null) return false;
+            Receive(species, seconds);
+            return true;
+        }
+
+        /// <summary>For other players' avatars online: show which fish they hold. No timer, no effect.</summary>
+        public void MirrorHeld(FishSpecies species)
+        {
+            Held = species;
+            TimeLeft = species != null ? species.holdSeconds : 0f;
         }
 
         void Receive(FishSpecies species, float seconds)
@@ -113,7 +139,10 @@ namespace Badeland.World
                 : species.holdSeconds;
 
             Release(FishLossReason.Thrown);
-            target.Receive(species, seconds);
+            if (target.IsLocal)
+                target.Receive(species, seconds);
+            else
+                NetworkThrow?.Invoke(this, target, species, seconds); // not connected: the fish is simply lost
         }
 
         FishCarrier FindThrowTarget()

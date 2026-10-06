@@ -28,7 +28,34 @@ namespace Badeland.EditorTools
         [MenuItem("Badeland/Create S3 Course Test Scene")]
         public static void Build()
         {
-            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            var result = BuildCourse(true);
+            if (result == null) return;
+            Save(result, "Graybox_S3_Course",
+                "Badeland: S3 course scene created at {0}. Press Play and run to the right (counter-clockwise). Fall in the water and swim back to a deck.");
+        }
+
+        /// <summary>What a built course contains, so other builders (the online scene) can extend it.</summary>
+        public class CourseResult
+        {
+            public UnityEngine.SceneManagement.Scene scene;
+            public MovementSettings settings;
+            public FishSpecies[] species;
+            public LapTracker tracker;
+            public IsoCameraRig rig;
+        }
+
+        public static void Save(CourseResult result, string sceneName, string logFormat)
+        {
+            string scenePath = SceneFolder + "/" + sceneName + ".unity";
+            EditorSceneManager.SaveScene(result.scene, scenePath);
+            AssetDatabase.SaveAssets();
+            Debug.Log(string.Format(logFormat, scenePath));
+        }
+
+        /// <summary>Builds the whole course in a new scene (not saved yet). Returns null if the user cancels.</summary>
+        public static CourseResult BuildCourse(bool includePlayer)
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return null;
 
             Directory.CreateDirectory(SceneFolder);
             Directory.CreateDirectory(SettingsFolder);
@@ -140,11 +167,53 @@ namespace Badeland.EditorTools
                 new LapChange { target = sign, tintFromLap = 3, tintColor = new Color(1f, 0.6f, 0.6f) },
             };
 
-            // ---- Player (starts at the bottom, facing the finish line)
+            // ---- Player (starts at the bottom, facing the finish line). The online scene spawns its players instead.
+            GameObject player = null;
+            if (includePlayer)
+            {
+                player = CreatePlayerObject(settings);
+                player.transform.position = new Vector3(-8f, 1.8f, -14f);
+                player.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+            }
+
+            // ---- Camera rig
+            var cam = Camera.main;
+            var rig = new GameObject("CameraRig");
+            var rigComponent = rig.AddComponent<IsoCameraRig>();
+            var rigSo = new SerializedObject(rigComponent);
+            if (player != null)
+            {
+                var targets = rigSo.FindProperty("targets");
+                targets.arraySize = 1;
+                targets.GetArrayElementAtIndex(0).objectReferenceValue = player.transform;
+                rigSo.ApplyModifiedPropertiesWithoutUndo();
+            }
+            if (cam != null)
+            {
+                cam.transform.SetParent(rig.transform, false);
+                cam.transform.localPosition = Vector3.zero;
+                cam.transform.localRotation = Quaternion.identity;
+            }
+
+            // ---- Test HUD
+            var hud = new GameObject("RaceHud").AddComponent<RaceHud>();
+            hud.tracker = tracker;
+
+            return new CourseResult
+            {
+                scene = scene,
+                settings = settings,
+                species = new[] { cod, salmon, clown },
+                tracker = tracker,
+                rig = rigComponent,
+            };
+        }
+
+        /// <summary>The player capsule with its controller scripts. Used by the offline scene and as the base of the online player prefab.</summary>
+        public static GameObject CreatePlayerObject(MovementSettings settings)
+        {
             var player = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             player.name = "Player";
-            player.transform.position = new Vector3(-8f, 1.8f, -14f);
-            player.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
             Object.DestroyImmediate(player.GetComponent<CapsuleCollider>());
             GrayboxMaterials.Tint(player, new Color(1f, 0.55f, 0.15f));
 
@@ -163,31 +232,7 @@ namespace Badeland.EditorTools
             so.FindProperty("settings").objectReferenceValue = settings;
             so.FindProperty("visual").objectReferenceValue = player.transform;
             so.ApplyModifiedPropertiesWithoutUndo();
-
-            // ---- Camera rig
-            var cam = Camera.main;
-            var rig = new GameObject("CameraRig");
-            var rigComponent = rig.AddComponent<IsoCameraRig>();
-            var rigSo = new SerializedObject(rigComponent);
-            var targets = rigSo.FindProperty("targets");
-            targets.arraySize = 1;
-            targets.GetArrayElementAtIndex(0).objectReferenceValue = player.transform;
-            rigSo.ApplyModifiedPropertiesWithoutUndo();
-            if (cam != null)
-            {
-                cam.transform.SetParent(rig.transform, false);
-                cam.transform.localPosition = Vector3.zero;
-                cam.transform.localRotation = Quaternion.identity;
-            }
-
-            // ---- Test HUD
-            var hud = new GameObject("RaceHud").AddComponent<RaceHud>();
-            hud.tracker = tracker;
-
-            string scenePath = SceneFolder + "/Graybox_S3_Course.unity";
-            EditorSceneManager.SaveScene(scene, scenePath);
-            AssetDatabase.SaveAssets();
-            Debug.Log("Badeland: S3 course scene created at " + scenePath + ". Press Play and run to the right (counter-clockwise). Fall in the water and swim back to a deck.");
+            return player;
         }
 
         // ------------------------------------------------------------------ helpers

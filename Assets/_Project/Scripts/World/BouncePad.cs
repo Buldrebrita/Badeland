@@ -25,6 +25,7 @@ namespace Badeland.World
             for (int i = 0; i < players.Count; i++)
             {
                 var p = players[i];
+                if (!p.IsLocal) continue;
                 Vector3 pos = p.transform.position;
                 if (pos.x < b.min.x || pos.x > b.max.x || pos.z < b.min.z || pos.z > b.max.z) continue;
                 if (p.FeetY() > b.max.y + 0.2f || p.Velocity.y > 2f) continue; // above it, or already going up
