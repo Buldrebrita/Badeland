@@ -34,7 +34,7 @@ namespace Badeland.EditorTools
             string path = Folder + "/M_Badeland_Sea.mat";
             AssetDatabase.DeleteAsset(path); // always rebuilt, so old versions never linger
 
-            Material mat = new Material(DefaultMaterial(renderer));
+            Material mat = NewMaterial(renderer);
             mat.name = "M_Badeland_Sea";
             SetTexture(mat, ripples);
             if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", Color.white);
@@ -92,6 +92,32 @@ namespace Badeland.EditorTools
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
+        // The URP "Lit" shader. Found by its fixed asset id first (a shader looked up by name can come back empty,
+        // which gives a pink material), then by name, then from the render pipeline's default material.
+        const string UrpLitGuid = "933532a4fcc9baf4fa0491de14d08ed7";
+        static Shader _lit;
+
+        static Shader LitShader()
+        {
+            if (_lit != null) return _lit;
+
+            string path = AssetDatabase.GUIDToAssetPath(UrpLitGuid);
+            if (!string.IsNullOrEmpty(path)) _lit = AssetDatabase.LoadAssetAtPath<Shader>(path);
+            if (_lit == null) _lit = Shader.Find("Universal Render Pipeline/Lit");
+
+            var pipeline = GraphicsSettings.currentRenderPipeline;
+            if (_lit == null && pipeline != null && pipeline.defaultMaterial != null) _lit = pipeline.defaultMaterial.shader;
+            return _lit;
+        }
+
+        /// <summary>A new material that is guaranteed to use the render pipeline's lit shader.</summary>
+        static Material NewMaterial(Renderer renderer)
+        {
+            Shader lit = LitShader();
+            if (lit != null) return new Material(lit);
+            return new Material(DefaultMaterial(renderer)); // last resort
+        }
+
         /// <summary>The render pipeline's own default material (URP Lit). Never depends on a shader's name.</summary>
         static Material DefaultMaterial(Renderer renderer)
         {
@@ -112,18 +138,9 @@ namespace Badeland.EditorTools
             var renderer = go.GetComponent<Renderer>();
             var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
 
-            // A material saved by an older build may use a shader that does not work here (it shows up pink). Rebuild it.
-            if (mat != null && (mat.shader == null || mat.shader.name == "Standard" || mat.shader.name.Contains("Error")))
-            {
-                AssetDatabase.DeleteAsset(path);
-                mat = null;
-            }
-
             if (mat == null)
             {
-                // Copy the material Unity gave this object, or the render pipeline's default if it has none (a mesh
-                // we built ourselves). Valid for whatever render pipeline is in use.
-                mat = new Material(renderer.sharedMaterial != null ? renderer.sharedMaterial : DefaultMaterial(renderer));
+                mat = NewMaterial(renderer);
 
                 if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
                 if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
