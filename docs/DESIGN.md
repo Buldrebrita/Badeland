@@ -152,18 +152,16 @@ Ranking: 1 star completed, 2 stars good performance, 3 stars perfect performance
 
 Beats:
 
-**Sudden, not signposted.** The monster must feel like it comes out of nowhere. Through all the laps the game plays as a normal, fun, bright party game, with no creeping dread or ominous music beforehand. The only hints are the small per-lap differences in section 4b, which players notice but cannot explain until later. The attack itself happens very quickly (a few seconds, not a long build-up), which is what makes it land.
+1. **Calm.** The party finishes the laps, a bridge inflates, and everyone gathers on a large floating inflatable platform in the middle of the sea. A moment of celebration.
+2. **Strike (a few seconds only).** With no earlier warning, the light drops, the sea darkens, a low rumble starts and the camera shakes.
+3. **Dodge (up to 20 seconds).** Players stay fully in control: run, jump, swim. A sea monster attacks with tentacle slams (they knock you flying into the sea, funny) and swallow attacks (a red circle follows one player, locks, then the mouth rises: step out in time and you live). Each attack is telegraphed a beat before it lands.
+4. **Escalation.** The attacks get faster and wider. The monster's huge head rises out of the sea behind the park.
+5. **Eaten one by one, then everyone.** Players who are caught are swallowed one at a time and watch their friends. Whoever is left is swallowed by a final attack that cannot be escaped, at 20 seconds at the latest.
+6. **Cut to black.** "To be continued..."
 
-1. **Calm.** The party arrives on a large floating inflatable platform in the Final Pool. A moment of celebration.
-2. **Wrongness (a few seconds only).** The music cuts or drops out, the lights go down, the water darkens, a low sound from below. No earlier foreshadowing.
-3. **Attack.** Tentacles and strikes from beneath the water. Players dodge and fight back with objects collected earlier or found on the platform.
-4. **Escalation.** The monster is far bigger than the players. The platform shrinks, tilts or deflates.
-5. **Unwinnable.** The fight turns. The monster swallows everyone.
-6. **Cut to black.**
+Tone: scary for a moment to a child, still inside a colourful adventure. Cartoon-like but intimidating, not extreme horror. You must always feel in control and able to get away, right until the end.
 
-Tone: scary for a moment to a child, still inside a colourful adventure. Cartoon-like but intimidating, not extreme horror.
-
-Design notes: the fight is scripted in phases with generous checkpoints; the swallow is a scripted cinematic, not a failure state.
+Design notes: the encounter is scripted from a shared clock, with generous telegraphs, so it reads the same for every player and is easy to network. The swallow is the planned ending of the chapter, not a failure state.
 
 Monster design direction: gigantic aquatic creature, tentacles, huge eyes, giant mouth, bioluminescent details, strange organic textures.
 
