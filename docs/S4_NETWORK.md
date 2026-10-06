@@ -19,7 +19,7 @@ Menu **Badeland > Create S4 Network Test Scene**. It builds the same floating co
 |---|---|
 | `NetworkManager` | Connects players and creates one player per connection. |
 | `NetworkPlayer` prefab (`Assets/_Project/Prefabs/Characters`) | The normal player plus the network scripts. |
-| `FishNetwork` | Settles who catches a fish, passes thrown fish between players and sets up the shared clock. |
+| `FishNetwork` | The list of fish species, so a species can be sent over the network. The catch and throw messages run through the players. |
 | `NetworkMenu` | On-screen Host and Join buttons at the top right. |
 
 ## 3. Test with two players on one computer

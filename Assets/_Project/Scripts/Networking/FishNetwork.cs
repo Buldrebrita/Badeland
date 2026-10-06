@@ -1,27 +1,26 @@
-using System.Collections.Generic;
-using Badeland.Systems;
 using Badeland.World;
-using Unity.Netcode;
 using UnityEngine;
 
 namespace Badeland.Networking
 {
     /// <summary>
-    /// One per scene, placed in the scene with a NetworkObject. Connects the jumping fish and fish throwing to
-    /// the network:
-    ///  - Fish leaps are decided by the shared clock, so every player sees the same fish. This object only
-    ///    settles WHO caught a fish: the host accepts the first request for each fish and tells everyone.
-    ///  - Throws go through <see cref="NetworkPlayer"/>.
-    ///  - Installs the network's shared clock for everything that uses <see cref="GameClock"/>.
+    /// One per scene. Holds the list of every fish species, so a species can be sent over the network as a
+    /// number. The list order must be identical on every machine, which it is because it comes from the scene.
+    /// The network messages for catching and throwing fish live on <see cref="NetworkPlayer"/>.
     /// </summary>
-    public class FishNetwork : NetworkBehaviour
+    public class FishNetwork : MonoBehaviour
     {
-        /// <summary>Every fish species that can be held. The list order is the network id of a species, so it must be the same on every machine.</summary>
+        /// <summary>Every fish species that can be held. The list order is the network id of a species.</summary>
         public FishSpecies[] allSpecies;
 
         static FishNetwork _instance;
 
-        readonly HashSet<long> _takenOnHost = new HashSet<long>();
+        void Awake() => _instance = this;
+
+        void OnDestroy()
+        {
+            if (_instance == this) _instance = null;
+        }
 
         public static int IndexOf(FishSpecies species)
         {
@@ -33,57 +32,6 @@ namespace Badeland.Networking
         {
             if (_instance == null || index < 0 || index >= _instance.allSpecies.Length) return null;
             return _instance.allSpecies[index];
-        }
-
-        public override void OnNetworkSpawn()
-        {
-            _instance = this;
-
-            // Everything that follows the shared clock now follows the network's.
-            GameClock.Provider = () => NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening
-                ? NetworkManager.Singleton.ServerTime.Time
-                : Time.timeAsDouble;
-
-            FishJumper.CatchRequested = (jumper, slot) => RequestCatchServerRpc(jumper.Id, slot);
-
-            FishCarrier.NetworkThrow = (from, target, species, seconds) =>
-            {
-                var thrower = from.GetComponent<NetworkPlayer>();
-                var receiver = target.GetComponent<NetworkPlayer>();
-                if (thrower == null || receiver == null) return false;
-                thrower.RequestThrow(receiver, species, seconds);
-                return true;
-            };
-        }
-
-        public override void OnNetworkDespawn()
-        {
-            if (_instance == this) _instance = null;
-            GameClock.Provider = null;
-            FishJumper.CatchRequested = null;
-            FishCarrier.NetworkThrow = null;
-        }
-
-        // A player thinks they caught a fish. Only the host answers, and only the first request per fish wins.
-        [ServerRpc(RequireOwnership = false)]
-        void RequestCatchServerRpc(int jumperId, int slot, ServerRpcParams rpcParams = default)
-        {
-            long key = ((long)jumperId << 32) | (uint)slot;
-            if (!_takenOnHost.Add(key)) return; // someone was faster
-
-            ConfirmCatchClientRpc(jumperId, slot, rpcParams.Receive.SenderClientId);
-        }
-
-        [ClientRpc]
-        void ConfirmCatchClientRpc(int jumperId, int slot, ulong catcherClientId)
-        {
-            var jumpers = FishJumper.All;
-            for (int i = 0; i < jumpers.Count; i++)
-            {
-                if (jumpers[i].Id != jumperId) continue;
-                jumpers[i].ConfirmCaught(slot, catcherClientId == NetworkManager.LocalClientId);
-                return;
-            }
         }
     }
 }

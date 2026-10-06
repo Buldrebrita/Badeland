@@ -41,9 +41,8 @@ namespace Badeland.Networking.EditorTools
             manager.NetworkConfig.PlayerPrefab = prefab;
             manager.NetworkConfig.NetworkTransport = transport;
 
-            // ---- Fish and clock sync (an in-scene network object).
+            // ---- The list of fish species (so a species can be sent over the network as a number).
             var fishObject = new GameObject("FishNetwork");
-            fishObject.AddComponent<NetworkObject>();
             var fishNetwork = fishObject.AddComponent<FishNetwork>();
             fishNetwork.allSpecies = course.species;
 

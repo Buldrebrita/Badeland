@@ -1,5 +1,6 @@
 using Badeland.CameraSystem;
 using Badeland.Player;
+using Badeland.Systems;
 using Badeland.World;
 using Unity.Netcode;
 using UnityEngine;
@@ -81,6 +82,19 @@ namespace Badeland.Networking
 
                 _carrier.Caught += OnLocalCaught;
                 _carrier.Lost += OnLocalLost;
+
+                // Hook the shared pieces up to the network. Only our own player does this.
+                GameClock.Provider = () => NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening
+                    ? NetworkManager.Singleton.ServerTime.Time
+                    : Time.timeAsDouble;
+                FishJumper.CatchRequested = (jumper, slot) => RequestCatchServerRpc(jumper.Id, slot);
+                FishCarrier.NetworkThrow = (from, target, species, seconds) =>
+                {
+                    var receiver = target.GetComponent<NetworkPlayer>();
+                    if (receiver == null) return false;
+                    RequestThrow(receiver, species, seconds);
+                    return true;
+                };
             }
             else
             {
@@ -116,6 +130,9 @@ namespace Badeland.Networking
             {
                 _carrier.Caught -= OnLocalCaught;
                 _carrier.Lost -= OnLocalLost;
+                GameClock.Provider = null;
+                FishJumper.CatchRequested = null;
+                FishCarrier.NetworkThrow = null;
             }
             else
             {
@@ -161,6 +178,32 @@ namespace Badeland.Networking
         void OnHeldFishChanged(int previous, int current)
         {
             _carrier.MirrorHeld(FishNetwork.SpeciesAt(current));
+        }
+
+        // The host remembers which fish are already taken (only used on the host).
+        static readonly System.Collections.Generic.HashSet<long> TakenOnHost = new System.Collections.Generic.HashSet<long>();
+
+        // Our player thinks it caught a fish. Only the host answers, and only the first request per fish wins.
+        [ServerRpc]
+        void RequestCatchServerRpc(int jumperId, int slot)
+        {
+            long key = ((long)jumperId << 32) | (uint)slot;
+            if (!TakenOnHost.Add(key)) return; // someone was faster
+
+            ConfirmCatchClientRpc(jumperId, slot);
+        }
+
+        // Runs on everyone. The fish is gone for all; it is ours only on the machine of the player who caught it.
+        [ClientRpc]
+        void ConfirmCatchClientRpc(int jumperId, int slot)
+        {
+            var jumpers = FishJumper.All;
+            for (int i = 0; i < jumpers.Count; i++)
+            {
+                if (jumpers[i].Id != jumperId) continue;
+                jumpers[i].ConfirmCaught(slot, IsOwner);
+                return;
+            }
         }
 
         /// <summary>Ask the host to pass a fish to another player. Called by the thrower's own machine.</summary>
