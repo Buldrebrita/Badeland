@@ -74,4 +74,12 @@ Planned: Steamworks account and app, Steamworks.NET (or Facepunch.Steamworks) in
 
 ## Status
 
-Pre-production. Design, tech decisions, roadmap and the vertical slice spec are written. First prototype scripts (character controller, isometric camera, fish carrying) are in `Assets/_Project/Scripts`, untested until the Unity project is created. See [docs/S1_SETUP.md](docs/S1_SETUP.md).
+Pre-production, with a working prototype (Unity 6, gray-box). Built and play-tested so far:
+
+- Character controller and isometric camera (S1), swimming and diving (S2)
+- A floating obstacle course on the sea with flag-gate laps, bounce pads, a rotating bar and stepping discs, run 3 times (S3)
+- Fish that leap at random places and times, can be caught for buffs and debuffs, and thrown at other players (S3)
+- Subtle per-lap changes in the park (S3)
+- Two-player online test with Netcode for GameObjects (S4/S5): synced movement, a shared clock, host-decided fish catches, thrown fish
+
+Not built yet: the finish area and floating platform, the monster and the swallow, the hidden trap and treasure, the slide, the puzzle, and all final art and audio. See [docs/S1_SETUP.md](docs/S1_SETUP.md), [docs/S2_SWIMMING.md](docs/S2_SWIMMING.md), [docs/S3_COURSE.md](docs/S3_COURSE.md) and [docs/S4_NETWORK.md](docs/S4_NETWORK.md) for how to try each part.
