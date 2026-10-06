@@ -59,7 +59,7 @@ The waterpark course is a **circuit** the party runs two or three times (lap cou
 - Changes are mostly cosmetic or background, and never unfair. They must not break the course, change the route, or make the race harder in a way the player can't read.
 - Example changes (to be designed per area): a prop that moved or is missing, a slightly different colour or inflatable shape, lights or shadows a touch different, a sign with different text, fewer people in the background, a ripple or shape under the water, a fish that is behaving differently, a sound that is slightly off.
 - Rule of thumb: lap 1 is normal, lap 2 has a few small oddities, lap 3 has more of them. Escalate gently, and always keep it deniable. Each change has a plausible innocent explanation.
-- These are the game's only foreshadowing (see section 8): the *mood* stays cheerful, the *monster itself* is still a complete surprise, and players only understand the clues in hindsight.
+- These are the only foreshadowing during the laps (see section 8): the *mood* stays cheerful, and players only understand the clues in hindsight. The danger alarm comes only after the laps are done.
 - Technically, drive the changes from a per-lap data asset (list of objects to toggle, move or retint per lap) so designers can add them without code.
 
 **Draft list of per-lap changes for the slice course** (creative first pass, to be tested and pruned):
