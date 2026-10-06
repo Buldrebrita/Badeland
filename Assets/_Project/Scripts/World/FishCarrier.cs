@@ -14,6 +14,8 @@ namespace Badeland.World
     public class FishCarrier : MonoBehaviour
     {
         static readonly List<FishCarrier> All = new List<FishCarrier>();
+        /// <summary>Every active fish carrier (one per player).</summary>
+        public static IReadOnlyList<FishCarrier> Active => All;
 
         [SerializeField] PlayerInputReader input;
         [Tooltip("Direction fish are thrown in. Defaults to this transform.")]

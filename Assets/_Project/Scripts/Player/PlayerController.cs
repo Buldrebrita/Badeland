@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Badeland.World;
 using UnityEngine;
 
@@ -33,6 +34,12 @@ namespace Badeland.Player
         float _wobblePhase;
         float _noSwimTimer;
 
+        static readonly List<PlayerController> AllPlayers = new List<PlayerController>();
+        /// <summary>Every active player. Course pieces (laps, bounce pads, fish) look players up here.</summary>
+        public static IReadOnlyList<PlayerController> All => AllPlayers;
+
+        float _knockTimer;
+
         public bool IsGrounded { get; private set; }
         public bool IsSwimming { get; private set; }
         /// <summary>Metres of the body below the water surface (0 when not in water).</summary>
@@ -52,10 +59,14 @@ namespace Badeland.Player
             if (visual == null) visual = transform;
         }
 
+        void OnEnable() => AllPlayers.Add(this);
+        void OnDisable() => AllPlayers.Remove(this);
+
         void Update()
         {
             if (settings == null) return;
             float dt = Time.deltaTime;
+            _knockTimer -= dt;
 
             UpdateWaterState(dt);
 
@@ -77,7 +88,7 @@ namespace Badeland.Player
 
         // ---------------------------------------------------------------- water
 
-        float FeetY() => transform.position.y + _cc.center.y - _cc.height * 0.5f;
+        public float FeetY() => transform.position.y + _cc.center.y - _cc.height * 0.5f;
 
         void UpdateWaterState(float dt)
         {
@@ -207,6 +218,16 @@ namespace Badeland.Player
             Vector3 right = Vector3.Cross(Vector3.up, forward);
 
             return forward * input.y + right * input.x;
+        }
+
+        /// <summary>Hit by an obstacle: shoved sideways and up. Ignored for a moment after a hit so it cannot repeat every frame.</summary>
+        public void Knock(Vector3 horizontalVelocity, float upwardVelocity)
+        {
+            if (_knockTimer > 0f) return;
+            _knockTimer = 0.6f;
+            horizontalVelocity.y = 0f;
+            _horizontalVelocity = horizontalVelocity;
+            Launch(upwardVelocity);
         }
 
         /// <summary>Launch the player upward, for bounce pads and the like.</summary>
