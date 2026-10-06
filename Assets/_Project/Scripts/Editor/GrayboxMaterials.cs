@@ -15,6 +15,32 @@ namespace Badeland.EditorTools
         /// <summary>Semi-transparent material for water surfaces.</summary>
         public static void TintWater(GameObject go, Color color) => Apply(go, color, true);
 
+        /// <summary>
+        /// The animated cartoon sea (Badeland/Water shader). Falls back to a plain translucent blue if the shader is
+        /// not available or has an error, so the scene never ends up pink.
+        /// </summary>
+        public static void ApplyWater(GameObject go, Color fallbackTint)
+        {
+            Shader shader = Shader.Find("Badeland/Water");
+            if (shader == null || ShaderUtil.ShaderHasError(shader))
+            {
+                Debug.LogWarning("Badeland: the water shader is not usable (not imported yet, or it has an error). Using a plain blue instead.");
+                TintWater(go, fallbackTint);
+                return;
+            }
+
+            Directory.CreateDirectory(Folder);
+            string path = Folder + "/M_Badeland_Water.mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null || mat.shader != shader)
+            {
+                mat = new Material(shader);
+                AssetDatabase.CreateAsset(mat, path);
+            }
+
+            go.GetComponent<Renderer>().sharedMaterial = mat;
+        }
+
         static void Apply(GameObject go, Color color, bool transparent)
         {
             Directory.CreateDirectory(Folder);

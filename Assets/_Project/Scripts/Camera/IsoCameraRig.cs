@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Badeland.Player;
 using UnityEngine;
 
 namespace Badeland.CameraSystem
@@ -29,6 +30,10 @@ namespace Badeland.CameraSystem
         [Tooltip("Aim slightly above the targets' feet.")]
         [SerializeField] float focusHeight = 1f;
 
+        [Header("Framing")]
+        [Tooltip("Players further than this from the main player are left out of the framing (for example someone in a secret room).")]
+        [Min(5f)] [SerializeField] float maxFramingDistance = 60f;
+
         /// <summary>The camera rig in the scene (there is one). Players add themselves to it when they spawn.</summary>
         public static IsoCameraRig Instance { get; private set; }
 
@@ -44,6 +49,27 @@ namespace Badeland.CameraSystem
         Vector3 _focus;
         float _distance;
         bool _initialised;
+
+        /// <summary>The player this machine controls. Framing is centred around them. Defaults to the first target.</summary>
+        public Transform PrimaryTarget { get; set; }
+
+        float _shakeTime;
+        float _shakeDuration;
+        float _shakeMagnitude;
+
+        /// <summary>Shake the camera (monster slams, big moments).</summary>
+        public void Shake(float magnitude, float seconds)
+        {
+            if (magnitude >= _shakeMagnitude * (_shakeDuration > 0f ? _shakeTime / _shakeDuration : 0f))
+            {
+                _shakeMagnitude = magnitude;
+                _shakeDuration = Mathf.Max(0.01f, seconds);
+                _shakeTime = _shakeDuration;
+            }
+        }
+
+        /// <summary>Jump straight to the framing instead of gliding (after a teleport).</summary>
+        public void Snap() => _initialised = false;
 
         public void AddTarget(Transform t) { if (t != null && !targets.Contains(t)) targets.Add(t); }
         public void RemoveTarget(Transform t) { targets.Remove(t); }
@@ -68,7 +94,16 @@ namespace Badeland.CameraSystem
             }
 
             Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
-            transform.SetPositionAndRotation(_focus - rot * Vector3.forward * _distance, rot);
+            Vector3 position = _focus - rot * Vector3.forward * _distance;
+
+            if (_shakeTime > 0f)
+            {
+                _shakeTime -= Time.deltaTime;
+                float fade = Mathf.Clamp01(_shakeTime / _shakeDuration);
+                position += Random.insideUnitSphere * (_shakeMagnitude * fade);
+            }
+
+            transform.SetPositionAndRotation(position, rot);
         }
 
         bool ComputeFraming(out Vector3 center, out float spread)
@@ -78,9 +113,19 @@ namespace Badeland.CameraSystem
             int count = 0;
             Vector3 min = Vector3.zero, max = Vector3.zero;
 
+            Transform primary = PrimaryTarget;
+            if (primary == null)
+                for (int i = 0; i < targets.Count && primary == null; i++) primary = targets[i];
+
             for (int i = 0; i < targets.Count; i++)
             {
                 if (targets[i] == null) continue;
+
+                // Leave out players who have been swallowed, and players far away (a different room).
+                var player = targets[i].GetComponent<PlayerController>();
+                if (player != null && player.IsEaten) continue;
+                if (primary != null && (targets[i].position - primary.position).sqrMagnitude > maxFramingDistance * maxFramingDistance) continue;
+
                 Vector3 p = targets[i].position;
                 if (count == 0) { min = max = p; }
                 else { min = Vector3.Min(min, p); max = Vector3.Max(max, p); }

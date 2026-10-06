@@ -48,6 +48,10 @@ namespace Badeland.Networking
         static readonly System.Collections.Generic.Dictionary<ulong, NetworkPlayer> ByClient =
             new System.Collections.Generic.Dictionary<ulong, NetworkPlayer>();
 
+        // True once the monster has swallowed this player. Written by the owner, read by everyone.
+        readonly NetworkVariable<bool> _eaten = new NetworkVariable<bool>(
+            false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+
         CharacterController _cc;
         PlayerController _controller;
         PlayerInputReader _input;
@@ -70,6 +74,7 @@ namespace Badeland.Networking
         public override void OnNetworkSpawn()
         {
             ByClient[OwnerClientId] = this;
+            _controller.NetworkId = (int)OwnerClientId;
             Tint();
 
             if (IsOwner)
@@ -95,6 +100,17 @@ namespace Badeland.Networking
                     RequestThrow(receiver, species, seconds);
                     return true;
                 };
+
+                // Trap, treasure and the monster all go through the host.
+                HiddenTrap.TriggerRequested = id => RequestTrapServerRpc(id);
+                SecretRoom.TreasureRequested = id => RequestTreasureServerRpc(id);
+                MonsterEncounter.IsAuthority = () => NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer;
+                if (IsServer) MonsterEncounter.BroadcastStart = start => StartEncounterClientRpc(start);
+
+                _controller.Swallowed += OnLocalSwallowed;
+
+                var rigForPrimary = IsoCameraRig.Instance;
+                if (rigForPrimary != null) rigForPrimary.PrimaryTarget = transform;
             }
             else
             {
@@ -106,6 +122,8 @@ namespace Badeland.Networking
                 _cc.enabled = false;
                 _heldFish.OnValueChanged += OnHeldFishChanged;
                 OnHeldFishChanged(-1, _heldFish.Value);
+                _eaten.OnValueChanged += (_, eaten) => { if (eaten) _controller.Eat(); };
+                if (_eaten.Value) _controller.Eat();
                 _state.OnValueChanged += (_, v) => _hasState = true;
                 if (_state.Value.position != Vector3.zero)
                 {
@@ -133,6 +151,11 @@ namespace Badeland.Networking
                 GameClock.Provider = null;
                 FishJumper.CatchRequested = null;
                 FishCarrier.NetworkThrow = null;
+                HiddenTrap.TriggerRequested = null;
+                SecretRoom.TreasureRequested = null;
+                MonsterEncounter.IsAuthority = null;
+                MonsterEncounter.BroadcastStart = null;
+                _controller.Swallowed -= OnLocalSwallowed;
             }
             else
             {
@@ -178,6 +201,43 @@ namespace Badeland.Networking
         void OnHeldFishChanged(int previous, int current)
         {
             _carrier.MirrorHeld(FishNetwork.SpeciesAt(current));
+        }
+
+        void OnLocalSwallowed() => _eaten.Value = true;
+
+        // ---------------------------------------------------------------- trap, treasure, monster
+
+        // The host remembers when each trap was last opened, and which treasures are gone.
+        static readonly System.Collections.Generic.Dictionary<int, double> TrapBusyUntil = new System.Collections.Generic.Dictionary<int, double>();
+        static readonly System.Collections.Generic.HashSet<int> TreasuresTaken = new System.Collections.Generic.HashSet<int>();
+
+        [ServerRpc]
+        void RequestTrapServerRpc(int trapId)
+        {
+            double now = NetworkManager.ServerTime.Time;
+            if (TrapBusyUntil.TryGetValue(trapId, out double until) && now < until) return;
+            TrapBusyUntil[trapId] = now + 9.0; // open time plus a little rest
+            TrapOpenedClientRpc(trapId, now + 0.05);
+        }
+
+        [ClientRpc]
+        void TrapOpenedClientRpc(int trapId, double time) => HiddenTrap.OpenById(trapId, time);
+
+        [ServerRpc]
+        void RequestTreasureServerRpc(int roomId)
+        {
+            if (!TreasuresTaken.Add(roomId)) return; // someone was faster
+            TreasureTakenClientRpc(roomId, NetworkManager.ServerTime.Time + 0.05);
+        }
+
+        // Runs on everyone. The treasure is ours only on the machine of the player who took it.
+        [ClientRpc]
+        void TreasureTakenClientRpc(int roomId, double time) => SecretRoom.ConfirmById(roomId, time, IsOwner);
+
+        [ClientRpc]
+        void StartEncounterClientRpc(double startTime)
+        {
+            if (MonsterEncounter.Instance != null) MonsterEncounter.Instance.BeginAt(startTime);
         }
 
         // The host remembers which fish are already taken (only used on the host).

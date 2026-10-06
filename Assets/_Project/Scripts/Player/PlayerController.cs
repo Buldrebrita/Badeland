@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Badeland.CameraSystem;
 using Badeland.World;
 using UnityEngine;
 
@@ -43,6 +44,18 @@ namespace Badeland.Player
         /// <summary>False for other players' avatars in an online game. They are moved by the network, not by this script.</summary>
         public bool IsLocal { get; set; } = true;
 
+        /// <summary>Identifies the player on the network (the client id). 0 offline.</summary>
+        public int NetworkId { get; set; }
+
+        /// <summary>True once the monster has swallowed this player. They no longer move or show.</summary>
+        public bool IsEaten { get; private set; }
+
+        /// <summary>True while something else (a water slide) is moving the player.</summary>
+        public bool IsExternallyControlled { get; private set; }
+
+        /// <summary>Fired once when this player is swallowed.</summary>
+        public event Action Swallowed;
+
         public bool IsGrounded { get; private set; }
         public bool IsSwimming { get; private set; }
         /// <summary>Metres of the body below the water surface (0 when not in water).</summary>
@@ -67,7 +80,7 @@ namespace Badeland.Player
 
         void Update()
         {
-            if (settings == null) return;
+            if (settings == null || IsEaten || IsExternallyControlled) return;
             float dt = Time.deltaTime;
             _knockTimer -= dt;
 
@@ -221,6 +234,73 @@ namespace Badeland.Player
             Vector3 right = Vector3.Cross(Vector3.up, forward);
 
             return forward * input.y + right * input.x;
+        }
+
+        /// <summary>The direction the player's stick points, relative to the camera, on the ground plane.</summary>
+        public Vector3 WorldMoveDirection() => CameraRelative(_input.Move);
+
+        public bool InteractPressed => _input != null && _input.InteractPressed;
+
+        /// <summary>The monster swallowed this player: hide them and switch their movement off.</summary>
+        public void Eat()
+        {
+            if (IsEaten) return;
+            IsEaten = true;
+            foreach (var r in GetComponentsInChildren<Renderer>()) r.enabled = false;
+            if (_cc != null) _cc.enabled = false;
+            Swallowed?.Invoke();
+        }
+
+        /// <summary>Instantly move the player somewhere else (trap doors, secret room exits).</summary>
+        public void Teleport(Vector3 position, float yawDegrees)
+        {
+            bool wasEnabled = _cc.enabled;
+            _cc.enabled = false;
+            transform.position = position;
+            visual.rotation = Quaternion.Euler(0f, yawDegrees, 0f);
+            _cc.enabled = wasEnabled && !IsExternallyControlled && !IsEaten;
+
+            _horizontalVelocity = Vector3.zero;
+            _verticalVelocity = 0f;
+            IsSwimming = false;
+            IsGrounded = false;
+            _noSwimTimer = 0.3f;
+            if (IsLocal && IsoCameraRig.Instance != null) IsoCameraRig.Instance.Snap();
+        }
+
+        /// <summary>Move with something the player stands on (a moving platform).</summary>
+        public void Carry(Vector3 delta)
+        {
+            if (!IsLocal || IsEaten || IsExternallyControlled || !_cc.enabled) return;
+            _cc.Move(delta);
+        }
+
+        /// <summary>A slide (or similar) takes over: normal movement and collision are switched off.</summary>
+        public void BeginExternalControl()
+        {
+            IsExternallyControlled = true;
+            _cc.enabled = false;
+            _horizontalVelocity = Vector3.zero;
+            _verticalVelocity = 0f;
+            IsSwimming = false;
+            _jumping = false;
+        }
+
+        public void SetExternalPose(Vector3 position, float yawDegrees)
+        {
+            transform.position = position;
+            visual.rotation = Quaternion.Euler(0f, yawDegrees, 0f);
+        }
+
+        /// <summary>Hand control back, carrying on with the given velocity (so a slide can throw you into the sea).</summary>
+        public void EndExternalControl(Vector3 velocity)
+        {
+            IsExternallyControlled = false;
+            _cc.enabled = !IsEaten;
+            _horizontalVelocity = new Vector3(velocity.x, 0f, velocity.z);
+            _verticalVelocity = velocity.y;
+            IsGrounded = false;
+            _noSwimTimer = 0.2f;
         }
 
         /// <summary>Hit by an obstacle: shoved sideways and up. Ignored for a moment after a hit so it cannot repeat every frame.</summary>

@@ -38,6 +38,17 @@ namespace Badeland.World
             for (int i = 0; i < carriers.Count; i++)
                 if (carriers[i].IsLocal) { mine = carriers[i]; break; }
 
+            if (TreasureWallet.Count > 0)
+                GUI.Label(new Rect(20, 95, 900, 40), "Treasure: " + TreasureWallet.Count, _style);
+
+            // Hints in the middle of the bottom of the screen: the bridge message, the monster, trap prompts.
+            string hint = !string.IsNullOrEmpty(MonsterEncounter.StatusText) ? MonsterEncounter.StatusText : HiddenTrap.PromptText;
+            if (!string.IsNullOrEmpty(hint))
+            {
+                var center = new GUIStyle(_style) { alignment = TextAnchor.MiddleCenter };
+                GUI.Label(new Rect(0, Screen.height - 90, Screen.width, 50), hint, center);
+            }
+
             if (mine != null && mine.IsHolding)
             {
                 var c = mine;

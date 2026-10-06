@@ -83,32 +83,39 @@ namespace Badeland.EditorTools
             sea.name = "Sea";
             sea.transform.position = new Vector3(0f, -4f, 0f);
             sea.transform.localScale = new Vector3(160f, 8f, 160f);
-            GrayboxMaterials.TintWater(sea, new Color(0.1f, 0.55f, 1f, 0.6f));
+            GrayboxMaterials.ApplyWater(sea, new Color(0.1f, 0.55f, 1f, 0.6f));
             sea.GetComponent<BoxCollider>().isTrigger = true;
             sea.AddComponent<WaterVolume>();
             Box("Seabed", new Vector3(0f, -8.5f, 0f), new Vector3(160f, 1f, 160f), new Color(0.05f, 0.25f, 0.6f));
 
             // ---- The floating circuit (counter-clockwise, 8 m wide). Deck tops sit at y 0.6, 0.6 m above the sea.
             // Bottom and top straights include the four corners. The left straight is a gap crossed on discs.
-            Deck("Deck Bottom (start)", new Vector3(0f, 0f, -14f), new Vector3(48f, 1.2f, 8f));
-            Deck("Deck Top", new Vector3(0f, 0f, 14f), new Vector3(48f, 1.2f, 8f));
+            // The bottom straight has a gap (x 9 to 17) crossed on a moving ferry; the top straight has a hole in its
+            // far side (x -12 to -8, z 14 to 18) where the trap door sits.
+            Deck("Deck Bottom West (start)", new Vector3(-7.5f, 0f, -14f), new Vector3(33f, 1.2f, 8f));
+            Deck("Deck Bottom East", new Vector3(20.5f, 0f, -14f), new Vector3(7f, 1.2f, 8f));
+            Deck("Deck Top West", new Vector3(-18f, 0f, 14f), new Vector3(12f, 1.2f, 8f));
+            Deck("Deck Top Middle", new Vector3(-10f, 0f, 12f), new Vector3(4f, 1.2f, 4f));
+            Deck("Deck Top East", new Vector3(8f, 0f, 14f), new Vector3(32f, 1.2f, 8f));
             Deck("Deck Right", new Vector3(20f, 0f, 0f), new Vector3(8f, 1.2f, 20f));
             for (int i = 0; i < 3; i++)
                 Disc("Stepping Disc " + (i + 1), new Vector3(-20f, 0f, -6.6f + i * 6.6f), 4.5f);
 
             // Orange borders (visual only) along the outer edge of each deck.
-            Trim("Trim Bottom", new Vector3(0f, 0.62f, -17.8f), new Vector3(48f, 0.1f, 0.4f));
-            Trim("Trim Top", new Vector3(0f, 0.62f, 17.8f), new Vector3(48f, 0.1f, 0.4f));
+            Trim("Trim Bottom West", new Vector3(-7.5f, 0.62f, -17.8f), new Vector3(33f, 0.1f, 0.4f));
+            Trim("Trim Bottom East", new Vector3(20.5f, 0.62f, -17.8f), new Vector3(7f, 0.1f, 0.4f));
+            Trim("Trim Top West", new Vector3(-18f, 0.62f, 17.8f), new Vector3(12f, 0.1f, 0.4f));
+            Trim("Trim Top East", new Vector3(8f, 0.62f, 17.8f), new Vector3(32f, 0.1f, 0.4f));
             Trim("Trim Right", new Vector3(23.8f, 0.62f, 0f), new Vector3(0.4f, 0.1f, 20f));
 
             // Green inflatable bumper posts on the outer corners, and beach balls as soft obstacles.
             foreach (var corner in new[] { new Vector2(22.4f, 16.4f), new Vector2(-22.4f, 16.4f), new Vector2(22.4f, -16.4f), new Vector2(-22.4f, -16.4f) })
                 Cyl("Bumper Post", new Vector3(corner.x, 1.6f, corner.y), new Vector3(1.6f, 1f, 1.6f), new Color(0.35f, 0.8f, 0.3f));
             Ball("Beach Ball", new Vector3(-12f, 1.85f, -17f), 2.5f, new Color(1f, 0.3f, 0.3f), true);
-            Ball("Beach Ball", new Vector3(13f, 1.85f, -11f), 2.5f, new Color(1f, 0.9f, 0.2f), true);
-            Ball("Beach Ball", new Vector3(-8f, 1.85f, 17f), 2.5f, new Color(0.3f, 0.5f, 1f), true);
-            Ball("Beach Ball (floating)", new Vector3(30f, 0.6f, 6f), 2.5f, new Color(1f, 0.4f, 0.8f), false);
-            Ball("Beach Ball (floating)", new Vector3(-30f, 0.6f, -12f), 2.5f, new Color(0.3f, 0.9f, 0.4f), false);
+            Ball("Beach Ball", new Vector3(4f, 1.85f, -11f), 2.5f, new Color(1f, 0.9f, 0.2f), true);
+            Ball("Beach Ball", new Vector3(6f, 1.85f, 16.5f), 2.5f, new Color(0.3f, 0.5f, 1f), true);
+            Ball("Beach Ball (floating)", new Vector3(30f, 0.6f, 6f), 2.5f, new Color(1f, 0.4f, 0.8f), false).AddComponent<Bobber>();
+            Ball("Beach Ball (floating)", new Vector3(-30f, 0.6f, -12f), 2.5f, new Color(0.3f, 0.9f, 0.4f), false).AddComponent<Bobber>();
 
             // Scenery: far-away decks you cannot reach, for the look of a big park.
             Deck("Far Deck 1", new Vector3(55f, 0f, 20f), new Vector3(20f, 1.2f, 12f));
@@ -152,7 +159,7 @@ namespace Badeland.EditorTools
             var towel = Box("Towel", new Vector3(-4f, 0.66f, -12f), new Vector3(1.6f, 0.1f, 0.9f), new Color(1f, 0.3f, 0.3f));
             var sunglasses = Box("Sunglasses", new Vector3(-4f, 0.76f, -12f), new Vector3(0.5f, 0.1f, 0.2f), new Color(0.05f, 0.05f, 0.05f));
             var chair = Box("Lifeguard Chair", new Vector3(5f, 1.5f, -16.5f), new Vector3(1f, 1.8f, 1f), new Color(0.95f, 0.95f, 0.95f));
-            var cone = Cyl("Cone", new Vector3(9f, 1.1f, -12f), new Vector3(0.6f, 0.5f, 0.6f), new Color(1f, 0.5f, 0.1f));
+            var cone = Cyl("Cone", new Vector3(7f, 1.1f, -12f), new Vector3(0.6f, 0.5f, 0.6f), new Color(1f, 0.5f, 0.1f));
             var sign = Box("Park Sign", new Vector3(-12f, 1.2f, -14.5f), new Vector3(4f, 1.2f, 0.2f), Color.white);
             // Flat floor objects must not block the player.
             foreach (var go in new[] { towel, sunglasses, cone }) Object.DestroyImmediate(go.GetComponent<Collider>());
@@ -168,6 +175,15 @@ namespace Badeland.EditorTools
                 new LapChange { target = cone, hideFromLap = 3 },
                 new LapChange { target = sign, tintFromLap = 3, tintColor = new Color(1f, 0.6f, 0.6f) },
             };
+
+            // ---- Ferry, windmill, slide, hidden trap and secret room, the big platform and the monster, scenery, the look.
+            CourseExtras.Build(new CourseExtras.Context
+            {
+                tracker = tracker,
+                sea = sea,
+                sun = GameObject.Find("Directional Light") != null ? GameObject.Find("Directional Light").GetComponent<Light>() : null,
+                camera = Camera.main,
+            });
 
             // ---- Player (starts at the bottom, facing the finish line). The online scene spawns its players instead.
             GameObject player = null;
@@ -321,9 +337,9 @@ namespace Badeland.EditorTools
         }
 
         // Inflatable deck: saturated blue, floating with its top 0.6 m above the sea.
-        static GameObject Deck(string name, Vector3 position, Vector3 scale) => Box(name, position, scale, new Color(0.15f, 0.4f, 0.95f));
+        internal static GameObject Deck(string name, Vector3 position, Vector3 scale) => Box(name, position, scale, new Color(0.15f, 0.4f, 0.95f));
 
-        static GameObject Disc(string name, Vector3 position, float diameter)
+        internal static GameObject Disc(string name, Vector3 position, float diameter)
         {
             // Cylinder primitives are 2 m tall and 1 m radius at scale 1.
             var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -334,13 +350,13 @@ namespace Badeland.EditorTools
             return go;
         }
 
-        static void Trim(string name, Vector3 position, Vector3 scale)
+        internal static void Trim(string name, Vector3 position, Vector3 scale)
         {
             var go = Box(name, position, scale, new Color(1f, 0.6f, 0.1f));
             Object.DestroyImmediate(go.GetComponent<Collider>());
         }
 
-        static GameObject Ball(string name, Vector3 position, float diameter, Color color, bool solid)
+        internal static GameObject Ball(string name, Vector3 position, float diameter, Color color, bool solid)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             go.name = name;
@@ -351,7 +367,7 @@ namespace Badeland.EditorTools
             return go;
         }
 
-        static GameObject Box(string name, Vector3 position, Vector3 scale, Color color)
+        internal static GameObject Box(string name, Vector3 position, Vector3 scale, Color color)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = name;
@@ -361,7 +377,7 @@ namespace Badeland.EditorTools
             return go;
         }
 
-        static GameObject Cyl(string name, Vector3 position, Vector3 scale, Color color)
+        internal static GameObject Cyl(string name, Vector3 position, Vector3 scale, Color color)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             go.name = name;
