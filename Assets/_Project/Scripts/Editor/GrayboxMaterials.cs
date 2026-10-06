@@ -16,49 +16,89 @@ namespace Badeland.EditorTools
         public static void TintWater(GameObject go, Color color) => Apply(go, color, true, false);
 
         /// <summary>
-        /// The animated cartoon sea (Badeland/Water shader). Opaque for the big sea, so the course clearly floats ON
-        /// the water; see-through for small bodies of water. Falls back to a plain blue if the shader is not
-        /// available or has an error, so the scene never ends up pink or empty.
+        /// A see-through blue for small bodies of water (the secret room's flood). Uses the render pipeline's own
+        /// default material, so it can never come out pink.
         /// </summary>
-        public static void ApplyWater(GameObject go, Color fallbackTint, bool opaque = false)
+        public static void ApplyWater(GameObject go, Color tint) => TintWater(go, tint);
+
+        /// <summary>
+        /// The big sea: a solid, bright blue with white ripple lines (a generated texture that SeaMotion scrolls).
+        /// Built on the render pipeline's default material, so it always draws.
+        /// </summary>
+        public static void ApplySea(GameObject go)
         {
-            Shader shader = Shader.Find("Badeland/Water");
-            if (shader == null || ShaderUtil.ShaderHasError(shader))
-            {
-                Debug.LogWarning("Badeland: the water shader is not usable (not imported yet, or it has an error). Using a plain blue instead.");
-                if (opaque) Tint(go, new Color(fallbackTint.r, fallbackTint.g, fallbackTint.b, 1f));
-                else TintWater(go, fallbackTint);
-                return;
-            }
+            var renderer = go.GetComponent<Renderer>();
+            Texture2D ripples = SeaRippleTexture();
 
             Directory.CreateDirectory(Folder);
-            string path = Folder + (opaque ? "/M_Badeland_Sea.mat" : "/M_Badeland_Water.mat");
-            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
-            if (mat == null || mat.shader != shader)
+            string path = Folder + "/M_Badeland_Sea.mat";
+            AssetDatabase.DeleteAsset(path); // always rebuilt, so old versions never linger
+
+            Material mat = new Material(DefaultMaterial(renderer));
+            mat.name = "M_Badeland_Sea";
+            SetTexture(mat, ripples);
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", Color.white);
+            if (mat.HasProperty("_Color")) mat.SetColor("_Color", Color.white);
+            if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.85f);
+            if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 0f);
+            if (mat.HasProperty("_BaseMap")) mat.SetTextureScale("_BaseMap", new Vector2(110f, 110f)); // a tile every few metres
+            AssetDatabase.CreateAsset(mat, path);
+
+            renderer.sharedMaterial = mat;
+        }
+
+        static void SetTexture(Material mat, Texture2D texture)
+        {
+            if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", texture);
+            else if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", texture);
+        }
+
+        // A seamless tile: soft blue with thin, wobbly white lines where several waves cancel out.
+        static Texture2D SeaRippleTexture()
+        {
+            string folder = "Assets/_Project/Art/Textures";
+            string path = folder + "/SeaRipples.png";
+            Directory.CreateDirectory(folder);
+
+            if (!File.Exists(path))
             {
-                mat = new Material(shader);
-                AssetDatabase.CreateAsset(mat, path);
+                const int size = 256;
+                var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+                var shallow = new Color(0.14f, 0.68f, 1f, 1f);
+                var deep = new Color(0.05f, 0.42f, 0.95f, 1f);
+                const float tau = Mathf.PI * 2f;
+
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        float u = x / (float)size, v = y / (float)size;
+                        // Whole numbers of cycles in each direction, so the tile repeats without a seam.
+                        float field = Mathf.Sin(tau * 3f * u) + Mathf.Sin(tau * 3f * v + 1f)
+                                    + Mathf.Sin(tau * (2f * u + 2f * v)) + Mathf.Sin(tau * (2f * u - 3f * v) + 2f);
+                        float lines = 1f - Mathf.SmoothStep(0f, 0.4f, Mathf.Abs(field));
+                        float shade = 0.5f + 0.25f * (Mathf.Sin(tau * u) + Mathf.Sin(tau * v)); // gentle light and dark patches
+                        Color c = Color.Lerp(deep, shallow, shade);
+                        c = Color.Lerp(c, Color.white, lines * 0.6f);
+                        tex.SetPixel(x, y, c);
+                    }
+                }
+                tex.Apply();
+                File.WriteAllBytes(path, tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+                AssetDatabase.ImportAsset(path);
             }
 
-            if (opaque)
-            {
-                mat.SetFloat("_SrcBlend", (float)BlendMode.One);
-                mat.SetFloat("_DstBlend", (float)BlendMode.Zero);
-                mat.SetFloat("_ZWrite", 1f);
-                mat.renderQueue = (int)RenderQueue.Geometry;
-                mat.SetColor("_ShallowColor", new Color(0.12f, 0.66f, 1f, 1f));
-                mat.SetColor("_DeepColor", new Color(0.03f, 0.34f, 0.9f, 1f));
-            }
-            else
-            {
-                mat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
-                mat.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
-                mat.SetFloat("_ZWrite", 0f);
-                mat.renderQueue = (int)RenderQueue.Transparent;
-            }
-            EditorUtility.SetDirty(mat);
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
 
-            go.GetComponent<Renderer>().sharedMaterial = mat;
+        /// <summary>The render pipeline's own default material (URP Lit). Never depends on a shader's name.</summary>
+        static Material DefaultMaterial(Renderer renderer)
+        {
+            var pipeline = GraphicsSettings.currentRenderPipeline;
+            if (pipeline != null && pipeline.defaultMaterial != null) return pipeline.defaultMaterial;
+            if (renderer != null && renderer.sharedMaterial != null) return renderer.sharedMaterial;
+            return new Material(Shader.Find("Standard"));
         }
 
         /// <summary>A solid colour that shows on both sides of a surface (for hand-built meshes like the slide).</summary>
@@ -71,21 +111,19 @@ namespace Badeland.EditorTools
 
             var renderer = go.GetComponent<Renderer>();
             var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+
+            // A material saved by an older build may use a shader that does not work here (it shows up pink). Rebuild it.
+            if (mat != null && (mat.shader == null || mat.shader.name == "Standard" || mat.shader.name.Contains("Error")))
+            {
+                AssetDatabase.DeleteAsset(path);
+                mat = null;
+            }
+
             if (mat == null)
             {
-                // Copy the material Unity gave this new primitive: valid for whatever render pipeline is in use.
-                Material source = renderer.sharedMaterial;
-                if (source == null)
-                {
-                    Shader shader = Shader.Find("Universal Render Pipeline/Lit");
-                    if (shader == null) shader = Shader.Find("Standard");
-                    if (shader == null) return;
-                    mat = new Material(shader);
-                }
-                else
-                {
-                    mat = new Material(source);
-                }
+                // Copy the material Unity gave this object, or the render pipeline's default if it has none (a mesh
+                // we built ourselves). Valid for whatever render pipeline is in use.
+                mat = new Material(renderer.sharedMaterial != null ? renderer.sharedMaterial : DefaultMaterial(renderer));
 
                 if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
                 if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);

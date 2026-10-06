@@ -105,7 +105,7 @@ namespace Badeland.Networking
                 HiddenTrap.TriggerRequested = id => RequestTrapServerRpc(id);
                 SecretRoom.TreasureRequested = id => RequestTreasureServerRpc(id);
                 MonsterEncounter.IsAuthority = () => NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer;
-                if (IsServer) MonsterEncounter.BroadcastStart = start => StartEncounterClientRpc(start);
+                if (IsServer) MonsterEncounter.BroadcastStart = (strike, rails, warning) => StartEncounterClientRpc(strike, rails, warning);
 
                 _controller.Swallowed += OnLocalSwallowed;
 
@@ -235,9 +235,9 @@ namespace Badeland.Networking
         void TreasureTakenClientRpc(int roomId, double time) => SecretRoom.ConfirmById(roomId, time, IsOwner);
 
         [ClientRpc]
-        void StartEncounterClientRpc(double startTime)
+        void StartEncounterClientRpc(double strikeTime, bool raiseRails, float warningSeconds)
         {
-            if (MonsterEncounter.Instance != null) MonsterEncounter.Instance.BeginAt(startTime);
+            if (MonsterEncounter.Instance != null) MonsterEncounter.Instance.BeginAt(strikeTime, raiseRails, warningSeconds);
         }
 
         // The host remembers which fish are already taken (only used on the host).

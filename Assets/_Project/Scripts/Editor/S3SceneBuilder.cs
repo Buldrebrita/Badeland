@@ -83,7 +83,8 @@ namespace Badeland.EditorTools
             sea.name = "Sea";
             sea.transform.position = new Vector3(0f, -4f, 0f);
             sea.transform.localScale = new Vector3(700f, 8f, 700f);
-            GrayboxMaterials.ApplyWater(sea, new Color(0.1f, 0.55f, 1f, 1f), true);
+            GrayboxMaterials.ApplySea(sea);
+            sea.AddComponent<SeaMotion>();
             sea.GetComponent<BoxCollider>().isTrigger = true;
             sea.AddComponent<WaterVolume>();
             Box("Seabed", new Vector3(0f, -8.5f, 0f), new Vector3(700f, 1f, 700f), new Color(0.1f, 0.45f, 0.9f));
@@ -367,7 +368,20 @@ namespace Badeland.EditorTools
         }
 
         // Inflatable deck: saturated blue, floating with its top 0.6 m above the sea.
-        internal static GameObject Deck(string name, Vector3 position, Vector3 scale) => Box(name, position, scale, new Color(0.15f, 0.4f, 0.95f));
+        internal static GameObject Deck(string name, Vector3 position, Vector3 scale)
+        {
+            var deck = Box(name, position, scale, new Color(0.15f, 0.4f, 0.95f));
+            Foam(deck, new Vector3(scale.x + 1.4f, 0.04f, scale.z + 1.4f));
+            return deck;
+        }
+
+        // A rim of white foam where a deck meets the water, so decks look like they float IN the sea.
+        internal static void Foam(GameObject owner, Vector3 size)
+        {
+            var foam = Box("Foam", new Vector3(owner.transform.position.x, 0.03f, owner.transform.position.z), size, new Color(0.92f, 0.98f, 1f));
+            Object.DestroyImmediate(foam.GetComponent<Collider>());
+            foam.transform.SetParent(owner.transform, true);
+        }
 
         internal static GameObject Disc(string name, Vector3 position, float diameter)
         {
@@ -377,6 +391,11 @@ namespace Badeland.EditorTools
             go.transform.position = position;
             go.transform.localScale = new Vector3(diameter, 0.6f, diameter);
             GrayboxMaterials.Tint(go, new Color(1f, 0.55f, 0.1f));
+
+            // A round rim of foam around the disc.
+            var foam = Cyl("Foam", new Vector3(position.x, 0.03f, position.z), new Vector3(diameter + 1.4f, 0.02f, diameter + 1.4f), new Color(0.92f, 0.98f, 1f));
+            Object.DestroyImmediate(foam.GetComponent<Collider>());
+            foam.transform.SetParent(go.transform, true);
             return go;
         }
 

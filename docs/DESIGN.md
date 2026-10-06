@@ -153,11 +153,12 @@ Ranking: 1 star completed, 2 stars good performance, 3 stars perfect performance
 Beats:
 
 1. **Calm.** The laps start and end on one big, clear start/finish platform. The party finishes the third lap there, celebrates for a few seconds and is already in place.
-2. **Strike (a few seconds only).** With no earlier warning, the light drops, the sea darkens, a low rumble starts and the camera shakes.
-3. **Dodge (up to 20 seconds).** Players stay fully in control: run, jump, swim. A sea monster attacks with tentacle slams (they knock you flying into the sea, funny) and swallow attacks (a red circle follows one player, locks, then the mouth rises: step out in time and you live). Each attack is telegraphed a beat before it lands.
-4. **Escalation.** The attacks get faster and wider. A giant monster heaves up out of the sea beside the platform, its eyes following the players, and slaps long tentacles down on them.
-5. **Eaten one by one, then everyone.** Players who are caught are swallowed one at a time and watch their friends. Whoever is left is swallowed by a final attack that cannot be escaped, at 20 seconds at the latest.
-6. **Cut to black.** "To be continued..."
+2. **The danger alarm (about 7 seconds).** The sea gets rougher, red alarm lights flash, a siren sounds, a voice says "Danger! Do not go in the water!" and railings rise around the platform.
+3. **The strike.** The light drops, the sea darkens, a low rumble starts, the camera shakes and a giant sea monster heaves out of the water beside the platform, its eyes following the players.
+4. **Dodge (up to 20 seconds).** Players stay fully in control: run and jump. The monster rears back and its eyes lock on one player, then its head suddenly leaps forward and snaps: anyone in its jaws is eaten. Step out of the way when it rears. In between, tentacles slap down and knock players flying.
+5. **Escalation.** The lunges come one after another, and the monster is far bigger than the players.
+6. **Eaten one by one, then everyone.** Players who are caught are swallowed one at a time and watch their friends. Whoever is left is swallowed by a final attack that cannot be escaped, at 20 seconds at the latest.
+7. **Cut to black.** "To be continued..."
 
 Tone: scary for a moment to a child, still inside a colourful adventure. Cartoon-like but intimidating, not extreme horror. You must always feel in control and able to get away, right until the end.
 

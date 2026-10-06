@@ -2,25 +2,36 @@
 
 Rebuild the course with **Badeland > Create S3 Course Test Scene** (single player) or **Badeland > Create S4 Network Test Scene** (online). Both now include everything below.
 
-## Testing shortcut
+## Testing shortcuts
 
-Press **M** to summon the monster straight away (on the host when online). Without it you must finish 3 laps first. To find the trap, press **E** next to the yellow duck. These are the only ways to test quickly.
+- **M**: runs the whole ending now (the danger alarm, then the monster). Use it on the big platform.
+- **N**: the monster at once, with no alarm.
+- **E** next to the yellow duck: the trap.
 
-## The ending: the start/finish platform and the monster
+Without these you must finish 3 laps first.
 
-The start and finish are now one big platform south of the bottom straight, with a wide flag gate and a black-and-white checkered finish line across its whole width. The laps start and end here, and so does the monster fight, so nobody has to walk anywhere to meet it.
+## The ending: alarm, then the monster
 
-1. Finish all 3 laps. A big **FINISHED!** banner appears for you the moment you finish (online it also shows how many players are done, "Waiting for the others... 1 / 2 finished").
-2. When everyone has finished and stood on the big platform for about 5 seconds, the monster **strikes with no warning**: the light drops, the sea darkens, there is a low rumble and the camera shakes. A giant monster **heaves up out of the sea** beside the platform, with its eyes following the players.
-3. For up to **20 seconds** you can run, jump and swim around. Long **tentacles reach in from the water** and loom over a glowing circle on the ground, then slap down:
-   - **Slaps** (orange circle): knock you flying into the sea. Funny, not deadly.
-   - **Grabs** (red circle, thicker tentacle): the circle follows one player, then locks. If you are inside when it slaps down, you are grabbed and dragged under (eaten). **Run out of the circle** while it is locked and you live on. One player is targeted at a time, in turn, and the grabs get faster and wider.
-   - **The final lunge** (a huge red circle from 16.5 s): the monster's head lunges over the platform and its mouth opens. Nobody escapes it.
-4. Eaten players disappear and watch their friends (the camera follows whoever is left). When everyone is gone, the screen fades to black and "To be continued..." appears.
+The start and finish are one big platform south of the bottom straight, with a wide flag gate and a black-and-white checkered finish line. The laps start and end here, and so does the fight, so nobody has to walk anywhere.
 
-Everything follows the shared clock, so online all players see the same attacks at the same moment. Each machine decides only whether its own player is hit.
+1. **Finish all 3 laps.** A big **FINISHED!** banner appears for you the moment you finish (online it also shows "Waiting for the others... 1 / 2 finished").
+2. **The danger alarm (about 7 seconds)**, once everyone has stood on the platform for about 3 seconds:
+   - The sea gets **rougher**: the ripples speed up and the whole sea heaves up and down.
+   - **Red alarm lights** flash on poles around the platform, the sun turns red, and a **siren** sounds.
+   - A **voice** says "Danger! Do not go in the water!" (twice), and the same text flashes on screen.
+   - **Railings rise** around the platform, so nobody can jump into the water.
+3. **The strike.** The light drops and a giant sea monster heaves up out of the water beside the platform, on a long thick neck, with its eyes following the players.
+4. **For up to 20 seconds you can run and jump around.** The monster:
+   - **Eats:** it rears back, opens its jaws and its eyes **lock on one player**. Then its head **suddenly leaps forward** and snaps. Anyone in its jaws is eaten. There is no circle on the ground. The warning is the rearing and the stare: watch the eyes, and when it pulls back, move. The leap aims where you stood a moment before.
+   - **Slaps:** in between, long tentacles reach in from the sea and loom over an orange circle, then slap down, knocking you flying across the platform (the railings keep you out of the water).
+   - **The last lunge** at exactly 20 seconds takes everyone left. It always happens.
+5. Eaten players disappear and watch their friends. When everyone is gone, the screen fades to black and "To be continued..." appears.
 
-Tuning is in the `Monster Encounter` object (time on platform, fallback, duration, how far the head rises and lunges). The attack timings are in `MonsterEncounter.BuildPlan` (slap times, grab times, radii and warning times). The monster's parts are in the `Monster Head` object, and the places the tentacles come out of the water are the `Tentacle Base` objects.
+Everything follows the shared clock, so online all players see the same thing at the same moment. Each machine decides only whether its own player is hit.
+
+**The voice.** If you give the `Monster Encounter` object a recorded **Voice Clip**, it plays that. If not, on Windows it uses the computer's own voice as a placeholder. On other systems it stays silent, and the on-screen text still shows. A real voice recording replaces it later.
+
+**Tuning** is in the `Monster Encounter` object: time on the platform, the length of the alarm, the fight length, how far the jaws reach. The timing of the lunges and slaps is in `MonsterEncounter.BuildPlan`.
 
 ## Hidden trap and treasure
 
@@ -47,7 +58,7 @@ At the top-west corner, a long gentle **ramp** (just run up it) leads to a pink 
 
 ## The look
 
-- **Water:** the sea is a big, solid, bright blue with a new shader (`Assets/_Project/Shaders/BadelandWater.shader`) that draws animated white ripple lines. The course sits on it, and diving hides you under it. If the shader fails to compile, the builder uses a plain blue instead and says so in the Console. The secret room's flood uses a see-through version.
+- **Water:** the sea is a big, solid, bright blue with a generated white-ripple texture (`Assets/_Project/Art/Textures/SeaRipples.png`) that drifts across it. It uses the render pipeline's own default material, so it always draws. Every deck has a rim of white foam where it meets the sea, so it looks like it floats in the water. The secret room's flood is a see-through blue.
 - **Lighting:** warm sun with soft shadows, bright ambient light, and post-processing (a little bloom, richer colours, a soft vignette) in `Assets/_Project/Settings/PostProcessing.asset`.
 - Everything is still primitive shapes and flat colours. Rounded inflatable models, real textures and animation are art work for later. This step only makes the structure and the mood.
 
@@ -61,7 +72,7 @@ At the top-west corner, a long gentle **ramp** (just run up it) leads to a pink 
 | Throw fish at a player | F | X |
 | Drop fish | Q | Y |
 | Interact (the trap) | E | B |
-| Summon the monster (testing) | M | |
+| Run the ending now (testing) | M (alarm, then the monster), N (monster at once) | |
 
 ## Not done yet
 

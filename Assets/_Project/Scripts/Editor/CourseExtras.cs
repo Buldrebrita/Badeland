@@ -35,6 +35,7 @@ namespace Badeland.EditorTools
             BuildSlide();
             BuildTrapAndRoom();
             BuildMonster(c);
+            BuildAlarmAndRailings();
             ApplyLook(c);
         }
 
@@ -50,6 +51,7 @@ namespace Badeland.EditorTools
             platform.pointA = a;
             platform.pointB = b;
             platform.period = 7f;
+            S3SceneBuilder.Foam(ferry, new Vector3(4.9f, 0.04f, 9.4f));
         }
 
         // ------------------------------------------------------------------ windmill
@@ -286,65 +288,62 @@ namespace Badeland.EditorTools
             GrayboxMaterials.TintWater(telegraph, new Color(1f, 0.15f, 0.1f, 0.5f));
             Object.DestroyImmediate(telegraph.GetComponent<Collider>());
 
-            // One section of a tentacle. A tentacle is a long chain of these laid along a curve.
+            // One section of a tentacle or of the neck. They are long chains of these laid along a curve.
             var section = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            section.name = "Tentacle Section Template";
+            section.name = "Section Template";
             section.transform.position = new Vector3(0f, -50f, 0f);
             GrayboxMaterials.Tint(section, new Color(0.32f, 0.12f, 0.52f));
             Object.DestroyImmediate(section.GetComponent<Collider>());
 
-            var maw = S3SceneBuilder.Cyl("Mouth Template", new Vector3(0f, -50f, 0f), new Vector3(1f, 2f, 1f), new Color(0.45f, 0.05f, 0.1f));
-            Object.DestroyImmediate(maw.GetComponent<Collider>());
+            var teal = new Color(0.08f, 0.26f, 0.32f);
+            var red = new Color(0.5f, 0.05f, 0.1f);
+            var tooth = new Color(0.97f, 0.97f, 0.9f);
 
-            // ---- The monster: a huge head that rises out of the sea east of the start platform, looking at the players.
-            // It sits below the water until the strike. Eyes and mouth face west (towards the platform).
+            // ---- The head. It faces its local +Z, and sits below the sea until the strike.
             var head = new GameObject("Monster Head");
-            head.transform.position = new Vector3(26f, -30f, -34f);
+            head.transform.position = new Vector3(12f, -30f, -34f);
 
-            var skull = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            skull.name = "Skull";
-            skull.transform.SetParent(head.transform, false);
-            skull.transform.localScale = Vector3.one * 24f;
-            GrayboxMaterials.Tint(skull, new Color(0.08f, 0.24f, 0.3f));
-            Object.DestroyImmediate(skull.GetComponent<Collider>());
+            Part(head.transform, PrimitiveType.Sphere, "Skull", new Vector3(0f, 0f, 0f), Vector3.one * 12f, teal);
+            Part(head.transform, PrimitiveType.Sphere, "Upper Jaw", new Vector3(0f, -0.5f, 5f), new Vector3(8f, 2.8f, 9f), teal);
+            Part(head.transform, PrimitiveType.Sphere, "Inside Of Mouth", new Vector3(0f, -1.3f, 3.5f), new Vector3(6.4f, 2f, 7f), red);
 
-            var mouth = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            mouth.name = "Mouth";
-            mouth.transform.SetParent(head.transform, false);
-            mouth.transform.localPosition = new Vector3(-10.6f, -2.2f, 0f);
-            mouth.transform.localScale = new Vector3(3f, 5f, 14f);
-            GrayboxMaterials.Tint(mouth, new Color(0.45f, 0.05f, 0.1f));
-            Object.DestroyImmediate(mouth.GetComponent<Collider>());
+            var jawPivot = new GameObject("Jaw Pivot").transform; // the lower jaw swings open around this
+            jawPivot.SetParent(head.transform, false);
+            jawPivot.localPosition = new Vector3(0f, -2f, 1.5f);
+            Part(jawPivot, PrimitiveType.Sphere, "Lower Jaw", new Vector3(0f, 0f, 3.8f), new Vector3(7.2f, 2.2f, 8.4f), teal);
+
+            for (int i = -2; i <= 2; i++)
+            {
+                Part(head.transform, PrimitiveType.Cube, "Tooth", new Vector3(i * 1.5f, -2.1f, 7.9f), new Vector3(0.55f, 1.3f, 0.55f), tooth);
+                Part(jawPivot, PrimitiveType.Cube, "Tooth", new Vector3(i * 1.5f, 1.2f, 7.3f), new Vector3(0.55f, 1.3f, 0.55f), tooth);
+            }
 
             var eyes = new Transform[2];
             var pupils = new Transform[2];
             for (int i = 0; i < 2; i++)
             {
                 float side = i == 0 ? -1f : 1f;
-                var eye = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                eye.name = "Eye";
-                eye.transform.SetParent(head.transform, false);
-                eye.transform.localPosition = new Vector3(-10.4f, 3.2f, side * 5f);
-                eye.transform.localScale = Vector3.one * 5.3f;
-                GrayboxMaterials.Tint(eye, new Color(1f, 1f, 0.7f));
-                Object.DestroyImmediate(eye.GetComponent<Collider>());
-                eyes[i] = eye.transform;
-
-                var pupil = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                pupil.name = "Pupil";
-                pupil.transform.SetParent(head.transform, false);
-                pupil.transform.localPosition = new Vector3(-12.2f, 3.2f, side * 5f);
-                pupil.transform.localScale = Vector3.one * 2.6f;
-                GrayboxMaterials.Tint(pupil, Color.black);
-                Object.DestroyImmediate(pupil.GetComponent<Collider>());
-                pupils[i] = pupil.transform;
+                eyes[i] = Part(head.transform, PrimitiveType.Sphere, "Eye", new Vector3(side * 2.9f, 2.6f, 4.4f), Vector3.one * 3.2f, new Color(1f, 1f, 0.7f));
+                pupils[i] = Part(head.transform, PrimitiveType.Sphere, "Pupil", new Vector3(side * 2.9f, 2.6f, 5.8f), Vector3.one * 1.6f, Color.black);
             }
 
-            // Where the tentacles come out of the water (hidden under the sea until they rise).
+            // ---- The body: big humps that rise out of the sea with the head.
+            var body = new GameObject("Monster Body");
+            body.transform.position = new Vector3(38f, -30f, -44f);
+            Part(body.transform, PrimitiveType.Sphere, "Back", Vector3.zero, Vector3.one * 34f, teal);
+            Part(body.transform, PrimitiveType.Sphere, "Hump", new Vector3(-14f, -3f, 13f), Vector3.one * 24f, teal * 0.9f);
+            Part(body.transform, PrimitiveType.Sphere, "Hump", new Vector3(-12f, -5f, -15f), Vector3.one * 20f, teal * 0.8f);
+
+            // ---- Positions: where the neck comes out of the sea, where the head hangs, where the tentacles come out.
+            var neckBase = new GameObject("Neck Base").transform;
+            neckBase.position = new Vector3(30f, -3f, -38f);
+            var lurk = new GameObject("Head Lurk Point").transform;
+            lurk.position = new Vector3(12f, 9f, -34f);
+
             Vector3[] anchors =
             {
-                new Vector3(16f, -1f, -28f), new Vector3(16f, -1f, -40f), new Vector3(12f, -1f, -34f),
-                new Vector3(18f, -1f, -22f), new Vector3(18f, -1f, -46f),
+                new Vector3(16f, -1f, -28f), new Vector3(16f, -1f, -42f), new Vector3(8f, -1f, -38f),
+                new Vector3(18f, -1f, -22f), new Vector3(14f, -1f, -48f),
             };
             var bases = new Transform[anchors.Length];
             for (int i = 0; i < anchors.Length; i++)
@@ -360,22 +359,132 @@ namespace Badeland.EditorTools
             encounter.platformCenter = ArenaCenter;
             encounter.platformSize = ArenaSize;
             encounter.platformTopY = 0.6f;
-            encounter.celebrationSeconds = 5f;
+            encounter.celebrationSeconds = 3f;
+            encounter.warningSeconds = 7f;
             encounter.sun = c.sun;
             encounter.seaRenderer = c.sea != null ? c.sea.GetComponent<Renderer>() : null;
             encounter.telegraphTemplate = telegraph;
             encounter.segmentTemplate = section;
-            encounter.mawTemplate = maw;
-            encounter.head = head;
+            encounter.head = head.transform;
+            encounter.jawPivot = jawPivot;
             encounter.eyes = eyes;
             encounter.pupils = pupils;
+            encounter.eyeRadius = 1.6f;
+            encounter.body = body;
+            encounter.neckBase = neckBase;
+            encounter.lurkPoint = lurk;
             encounter.tentacleBases = bases;
 
             // Switch the pieces off now, so they are not in the world until used.
             telegraph.SetActive(false);
             section.SetActive(false);
-            maw.SetActive(false);
             head.SetActive(false);
+            body.SetActive(false);
+        }
+
+        // A coloured primitive without a collider, parented and placed relative to its parent.
+        static Transform Part(Transform parent, PrimitiveType type, string name, Vector3 localPosition, Vector3 localScale, Color color)
+        {
+            var go = GameObject.CreatePrimitive(type);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPosition;
+            go.transform.localScale = localScale;
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            GrayboxMaterials.Tint(go, color);
+            return go.transform;
+        }
+
+        // ------------------------------------------------------------------ the danger alarm: red lights and railings
+
+        static void BuildAlarmAndRailings()
+        {
+            // ---- Red alarm beacons on poles around the big platform.
+            Vector3[] spots =
+            {
+                new Vector3(-26.5f, 0f, -32.5f), new Vector3(4.5f, 0f, -32.5f), new Vector3(-26.5f, 0f, -19.5f),
+                new Vector3(4.5f, 0f, -19.5f), new Vector3(-11f, 0f, -33.2f), new Vector3(-11f, 0f, -11f),
+            };
+
+            var alarmObject = new GameObject("Alarm Lights");
+            var lights = new List<Light>();
+            var beacons = new List<Renderer>();
+            foreach (var spot in spots)
+            {
+                var pole = S3SceneBuilder.Cyl("Alarm Pole", new Vector3(spot.x, 0.6f + 1.9f, spot.z), new Vector3(0.3f, 1.9f, 0.3f), new Color(0.85f, 0.85f, 0.9f));
+                Object.DestroyImmediate(pole.GetComponent<Collider>());
+                pole.transform.SetParent(alarmObject.transform, true);
+
+                var beacon = S3SceneBuilder.Ball("Alarm Beacon", new Vector3(spot.x, 0.6f + 4.3f, spot.z), 1f, new Color(0.25f, 0.02f, 0.02f), false);
+                beacon.transform.SetParent(alarmObject.transform, true);
+                beacons.Add(beacon.GetComponent<Renderer>());
+
+                var lightObject = new GameObject("Alarm Light");
+                lightObject.transform.SetParent(alarmObject.transform, true);
+                lightObject.transform.position = beacon.transform.position;
+                var l = lightObject.AddComponent<Light>();
+                l.type = LightType.Point;
+                l.color = new Color(1f, 0.12f, 0.08f);
+                l.range = 34f;
+                l.intensity = 0f;
+                l.enabled = false;
+                lights.Add(l);
+            }
+
+            var alarm = alarmObject.AddComponent<AlarmLights>();
+            alarm.lights = lights.ToArray();
+            alarm.beacons = beacons.ToArray();
+
+            // ---- Railings around the platform. They are built standing, then lowered out of sight; the danger alarm raises them.
+            Vector3[] outline =
+            {
+                new Vector3(-28f, 0f, -34f), new Vector3(6f, 0f, -34f), new Vector3(6f, 0f, -18f), new Vector3(9f, 0f, -18f),
+                new Vector3(9f, 0f, -10f), new Vector3(-24f, 0f, -10f), new Vector3(-24f, 0f, -18f), new Vector3(-28f, 0f, -18f),
+            };
+
+            var railRoot = new GameObject("Safety Railings");
+            var colliders = new List<Collider>();
+            for (int i = 0; i < outline.Length; i++)
+                Rail(railRoot.transform, colliders, outline[i], outline[(i + 1) % outline.Length]);
+            railRoot.transform.position = new Vector3(0f, -4f, 0f);
+
+            var raiser = railRoot.AddComponent<RailingRaiser>();
+            raiser.root = railRoot.transform;
+            raiser.colliders = colliders.ToArray();
+            raiser.raiseMeters = 4f;
+        }
+
+        // One straight run of railing: three white bars, red posts, and an invisible solid wall that is too tall to jump.
+        static void Rail(Transform root, List<Collider> colliders, Vector3 a, Vector3 b)
+        {
+            const float deckTop = 0.6f;
+            Vector3 mid = (a + b) * 0.5f;
+            float length = Vector3.Distance(a, b);
+            bool alongX = Mathf.Abs(a.z - b.z) < 0.01f;
+
+            foreach (float height in new[] { 0.9f, 1.9f, 2.9f })
+            {
+                var bar = S3SceneBuilder.Box("Rail Bar", new Vector3(mid.x, deckTop + height, mid.z),
+                    alongX ? new Vector3(length, 0.18f, 0.18f) : new Vector3(0.18f, 0.18f, length), new Color(0.96f, 0.96f, 0.98f));
+                Object.DestroyImmediate(bar.GetComponent<Collider>());
+                bar.transform.SetParent(root, true);
+            }
+
+            int posts = Mathf.Max(2, Mathf.RoundToInt(length / 4f) + 1);
+            for (int i = 0; i < posts; i++)
+            {
+                Vector3 p = Vector3.Lerp(a, b, i / (posts - 1f));
+                var post = S3SceneBuilder.Cyl("Rail Post", new Vector3(p.x, deckTop + 1.7f, p.z), new Vector3(0.34f, 1.7f, 0.34f), new Color(0.9f, 0.15f, 0.15f));
+                Object.DestroyImmediate(post.GetComponent<Collider>());
+                post.transform.SetParent(root, true);
+            }
+
+            var wall = new GameObject("Rail Wall");
+            wall.transform.SetParent(root, true);
+            wall.transform.position = new Vector3(mid.x, deckTop + 1.9f, mid.z);
+            var box = wall.AddComponent<BoxCollider>();
+            box.size = alongX ? new Vector3(length, 3.8f, 0.4f) : new Vector3(0.4f, 3.8f, length);
+            colliders.Add(box);
         }
 
         // ------------------------------------------------------------------ the look
