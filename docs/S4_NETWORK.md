@@ -32,6 +32,17 @@ Menu **Badeland > Create S4 Network Test Scene**. It builds the same floating co
 
 If the Multiplayer Play Mode window does not look like this, tell me what you see. It changes between Unity versions.
 
+## 3b. A more reliable second player: a test build
+
+If Multiplayer Play Mode does not open a second player, build a small stand-alone test game and run it next to the editor:
+
+1. Run **Badeland > Create S4 Network Test Scene** (so the scene is up to date).
+2. Run **Badeland > Build Test Player (for online testing)**. The first build takes a few minutes. A folder opens with `BadelandOnlineTest.exe`. (If it complains that Windows build support is missing, add it in Unity Hub: *Installs*, the gear icon on your Unity version, *Add modules*, *Windows Build Support*.)
+3. Press **Play** in the editor and click **Host**.
+4. Start `BadelandOnlineTest.exe` and click **Join**.
+
+Both windows keep running when the other one is in front.
+
 ## 4. Test with a friend (later)
 
 Host clicks **Host**. The friend types the host's IP address (same home network) and clicks **Join**. Over the internet this needs port forwarding or a relay (Steam relay is planned), so start on the same network.

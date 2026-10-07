@@ -13,6 +13,11 @@ namespace Badeland.Networking
         /// <summary>Every fish species that can be held. The list order is the network id of a species.</summary>
         public FishSpecies[] allSpecies;
 
+        [Header("Player look (set by the scene builder)")]
+        [Tooltip("The materials a spawned player uses. Kept in the scene so a stale prefab can never make the player pink.")]
+        public Material playerMaterial;
+        public Material noseMaterial;
+
         static FishNetwork _instance;
 
         void Awake() => _instance = this;
@@ -21,6 +26,9 @@ namespace Badeland.Networking
         {
             if (_instance == this) _instance = null;
         }
+
+        public static Material PlayerMaterial => _instance != null ? _instance.playerMaterial : null;
+        public static Material NoseMaterial => _instance != null ? _instance.noseMaterial : null;
 
         public static int IndexOf(FishSpecies species)
         {

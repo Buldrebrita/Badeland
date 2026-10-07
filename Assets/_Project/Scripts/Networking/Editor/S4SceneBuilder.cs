@@ -30,7 +30,14 @@ namespace Badeland.Networking.EditorTools
             playerObject.name = "NetworkPlayer";
             playerObject.AddComponent<NetworkObject>();
             playerObject.AddComponent<NetworkPlayer>();
-            var prefab = PrefabUtility.SaveAsPrefabAsset(playerObject, PrefabFolder + "/NetworkPlayer.prefab");
+            // The materials the scene will hand to every spawned player.
+            Material bodyMaterial = playerObject.GetComponent<Renderer>().sharedMaterial;
+            var noseTransform = playerObject.transform.Find("Nose");
+            Material noseMaterial = noseTransform != null ? noseTransform.GetComponent<Renderer>().sharedMaterial : null;
+
+            string prefabPath = PrefabFolder + "/NetworkPlayer.prefab";
+            AssetDatabase.DeleteAsset(prefabPath); // rebuilt from scratch, so nothing stale is carried over
+            var prefab = PrefabUtility.SaveAsPrefabAsset(playerObject, prefabPath);
             Object.DestroyImmediate(playerObject);
 
             // ---- The network manager: connects players and creates a NetworkPlayer for each one.
@@ -45,6 +52,8 @@ namespace Badeland.Networking.EditorTools
             var fishObject = new GameObject("FishNetwork");
             var fishNetwork = fishObject.AddComponent<FishNetwork>();
             fishNetwork.allSpecies = course.species;
+            fishNetwork.playerMaterial = bodyMaterial;
+            fishNetwork.noseMaterial = noseMaterial;
 
             // ---- Host / Join buttons
             new GameObject("NetworkMenu").AddComponent<NetworkMenu>();

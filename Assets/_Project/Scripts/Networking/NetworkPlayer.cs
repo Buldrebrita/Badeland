@@ -57,6 +57,7 @@ namespace Badeland.Networking
         PlayerInputReader _input;
         FishCarrier _carrier;
         Renderer _bodyRenderer;
+        Renderer _noseRenderer;
         bool _hasState;
 
         public ulong ClientId => OwnerClientId;
@@ -68,13 +69,16 @@ namespace Badeland.Networking
             _controller = GetComponent<PlayerController>();
             _input = GetComponent<PlayerInputReader>();
             _carrier = GetComponent<FishCarrier>();
-            _bodyRenderer = GetComponentInChildren<Renderer>();
+            var renderers = GetComponentsInChildren<Renderer>();
+            if (renderers.Length > 0) _bodyRenderer = renderers[0];
+            if (renderers.Length > 1) _noseRenderer = renderers[1];
         }
 
         public override void OnNetworkSpawn()
         {
             ByClient[OwnerClientId] = this;
             _controller.NetworkId = (int)OwnerClientId;
+            ApplySceneMaterials();
             Tint();
 
             if (IsOwner)
@@ -320,6 +324,13 @@ namespace Badeland.Networking
         }
 
         // ---------------------------------------------------------------- look
+
+        // Use the materials stored in the scene, so a stale or broken material inside the prefab file cannot show up as pink.
+        void ApplySceneMaterials()
+        {
+            if (_bodyRenderer != null && FishNetwork.PlayerMaterial != null) _bodyRenderer.sharedMaterial = FishNetwork.PlayerMaterial;
+            if (_noseRenderer != null && FishNetwork.NoseMaterial != null) _noseRenderer.sharedMaterial = FishNetwork.NoseMaterial;
+        }
 
         void Tint()
         {

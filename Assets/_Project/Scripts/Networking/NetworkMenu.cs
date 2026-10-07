@@ -14,6 +14,9 @@ namespace Badeland.Networking
         public string address = "127.0.0.1";
         public ushort port = 7777;
 
+        // With two windows on one computer, the one that is not in front must keep running, or the game stalls.
+        void Awake() => Application.runInBackground = true;
+
         GUIStyle _label;
         GUIStyle _button;
 
