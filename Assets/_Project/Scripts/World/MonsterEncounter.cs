@@ -767,8 +767,12 @@ namespace Badeland.World
             RenderSettings.fogColor = Color.Lerp(_fogColor0, new Color(0.04f, 0.08f, 0.16f), k);
             RenderSettings.fogDensity = Mathf.Lerp(_fogDensity0, 0.008f, k);
 
-            if (_seaMaterial != null && _seaMaterial.HasProperty("_BaseColor"))
-                _seaMaterial.SetColor("_BaseColor", Color.Lerp(Color.white, new Color(0.12f, 0.2f, 0.4f), k));
+            if (_seaMaterial != null)
+            {
+                Color seaTint = Color.Lerp(Color.white, new Color(0.12f, 0.2f, 0.4f), k);
+                if (_seaMaterial.HasProperty("_BaseColor")) _seaMaterial.SetColor("_BaseColor", seaTint);
+                if (_seaMaterial.HasProperty("_Color")) _seaMaterial.SetColor("_Color", seaTint);
+            }
 
             if (_rumble != null) _rumble.volume = Mathf.Lerp(0f, 0.9f, Mathf.Clamp01(e / 1.5f));
 

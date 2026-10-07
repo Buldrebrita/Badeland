@@ -5,52 +5,137 @@ using UnityEngine.Rendering;
 
 namespace Badeland.EditorTools
 {
-    /// <summary>Saved-to-disk gray-box materials, shared by the scene builders.</summary>
+    /// <summary>
+    /// Saved-to-disk gray-box materials, shared by the scene builders.
+    ///
+    /// Every material is made by copying what Unity itself puts on a brand-new primitive. That is always right for
+    /// whichever render pipeline the project is using at that moment (the built-in renderer or URP), so it can never
+    /// come out pink because of a shader we picked. Materials that already exist but use a different shader (for
+    /// example after the render pipeline changed) are switched over in place.
+    /// </summary>
     public static class GrayboxMaterials
     {
         const string Folder = "Assets/_Project/Art/Materials";
 
-        public static void Tint(GameObject go, Color color) => Apply(go, color, false, false);
+        public static void Tint(GameObject go, Color color) => Apply(go, color, false);
 
-        /// <summary>Semi-transparent material for water surfaces.</summary>
-        public static void TintWater(GameObject go, Color color) => Apply(go, color, true, false);
+        /// <summary>Semi-transparent material for water, markers and the like.</summary>
+        public static void TintWater(GameObject go, Color color) => Apply(go, color, true);
 
-        /// <summary>
-        /// A see-through blue for small bodies of water (the secret room's flood). Uses the render pipeline's own
-        /// default material, so it can never come out pink.
-        /// </summary>
+        /// <summary>Kept for old callers. (The slide's mesh is double-sided in the mesh itself.)</summary>
+        public static void TintDoubleSided(GameObject go, Color color) => Apply(go, color, false);
+
+        /// <summary>A see-through blue for small bodies of water (the secret room's flood).</summary>
         public static void ApplyWater(GameObject go, Color tint) => TintWater(go, tint);
 
         /// <summary>
         /// The big sea: a solid, bright blue with white ripple lines (a generated texture that SeaMotion scrolls).
-        /// Built on the render pipeline's default material, so it always draws.
         /// </summary>
         public static void ApplySea(GameObject go)
         {
             var renderer = go.GetComponent<Renderer>();
-            Texture2D ripples = SeaRippleTexture();
-
             Directory.CreateDirectory(Folder);
             string path = Folder + "/M_Badeland_Sea.mat";
-            AssetDatabase.DeleteAsset(path); // always rebuilt, so old versions never linger
+            AssetDatabase.DeleteAsset(path); // rebuilt every time, so an old broken version never lingers
 
-            Material mat = NewMaterial(renderer);
+            Material mat = new Material(Template());
             mat.name = "M_Badeland_Sea";
-            SetTexture(mat, ripples);
-            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", Color.white);
-            if (mat.HasProperty("_Color")) mat.SetColor("_Color", Color.white);
-            if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.85f);
+            Texture2D ripples = SeaRippleTexture();
+
+            string textureProperty = TextureProperty(mat);
+            if (textureProperty != null)
+            {
+                mat.SetTexture(textureProperty, ripples);
+                mat.SetTextureScale(textureProperty, new Vector2(110f, 110f)); // a tile every few metres
+            }
+
+            SetColor(mat, Color.white);
+            if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 0.8f);
+            if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.8f);
             if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 0f);
-            if (mat.HasProperty("_BaseMap")) mat.SetTextureScale("_BaseMap", new Vector2(110f, 110f)); // a tile every few metres
             AssetDatabase.CreateAsset(mat, path);
 
             renderer.sharedMaterial = mat;
         }
 
-        static void SetTexture(Material mat, Texture2D texture)
+        static void Apply(GameObject go, Color color, bool transparent)
         {
-            if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", texture);
-            else if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", texture);
+            Directory.CreateDirectory(Folder);
+            string path = Folder + "/M_Graybox_" + (transparent ? "Water_" : "") + ColorUtility.ToHtmlStringRGBA(color) + ".mat";
+
+            var renderer = go.GetComponent<Renderer>();
+            Shader shader = Template().shader;
+
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            bool create = mat == null;
+            if (create) mat = new Material(Template());
+            else if (mat.shader != shader) mat.shader = shader; // repair: it was made for a different render pipeline
+
+            SetColor(mat, color);
+            if (transparent) MakeTransparent(mat);
+
+            if (create) AssetDatabase.CreateAsset(mat, path);
+            else EditorUtility.SetDirty(mat);
+
+            renderer.sharedMaterial = mat;
+        }
+
+        // ------------------------------------------------------------------ helpers
+
+        // What Unity puts on a new primitive in this project: valid for the active render pipeline.
+        static Material _template;
+
+        static Material Template()
+        {
+            if (_template != null) return _template;
+
+            var probe = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            _template = probe.GetComponent<Renderer>().sharedMaterial;
+            Object.DestroyImmediate(probe);
+            return _template;
+        }
+
+        static void SetColor(Material mat, Color color)
+        {
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+            if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
+        }
+
+        static string TextureProperty(Material mat)
+        {
+            if (mat.HasProperty("_BaseMap")) return "_BaseMap";
+            if (mat.HasProperty("_MainTex")) return "_MainTex";
+            return null;
+        }
+
+        // Switches a material to alpha blending, in the way the active shader expects.
+        static void MakeTransparent(Material mat)
+        {
+            if (mat.HasProperty("_Mode"))
+            {
+                // The built-in Standard shader: "Fade/Transparent" mode.
+                mat.SetFloat("_Mode", 3f);
+                mat.SetOverrideTag("RenderType", "Transparent");
+                mat.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
+                mat.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
+                mat.SetInt("_ZWrite", 0);
+                mat.DisableKeyword("_ALPHATEST_ON");
+                mat.EnableKeyword("_ALPHABLEND_ON");
+                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                mat.renderQueue = (int)RenderQueue.Transparent;
+            }
+            else if (mat.HasProperty("_Surface"))
+            {
+                // URP Lit: what the "Surface Type: Transparent" dropdown sets.
+                mat.SetFloat("_Surface", 1f);
+                mat.SetFloat("_Blend", 0f);
+                mat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+                mat.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+                mat.SetFloat("_ZWrite", 0f);
+                mat.SetOverrideTag("RenderType", "Transparent");
+                mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                mat.renderQueue = (int)RenderQueue.Transparent;
+            }
         }
 
         // A seamless tile: soft blue with thin, wobbly white lines where several waves cancel out.
@@ -90,84 +175,6 @@ namespace Badeland.EditorTools
             }
 
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-        }
-
-        // The URP "Lit" shader. Found by its fixed asset id first (a shader looked up by name can come back empty,
-        // which gives a pink material), then by name, then from the render pipeline's default material.
-        const string UrpLitGuid = "933532a4fcc9baf4fa0491de14d08ed7";
-        static Shader _lit;
-
-        static Shader LitShader()
-        {
-            if (_lit != null) return _lit;
-
-            string path = AssetDatabase.GUIDToAssetPath(UrpLitGuid);
-            if (!string.IsNullOrEmpty(path)) _lit = AssetDatabase.LoadAssetAtPath<Shader>(path);
-            if (_lit == null) _lit = Shader.Find("Universal Render Pipeline/Lit");
-
-            var pipeline = GraphicsSettings.currentRenderPipeline;
-            if (_lit == null && pipeline != null && pipeline.defaultMaterial != null) _lit = pipeline.defaultMaterial.shader;
-            return _lit;
-        }
-
-        /// <summary>A new material that is guaranteed to use the render pipeline's lit shader.</summary>
-        static Material NewMaterial(Renderer renderer)
-        {
-            Shader lit = LitShader();
-            if (lit != null) return new Material(lit);
-            return new Material(DefaultMaterial(renderer)); // last resort
-        }
-
-        /// <summary>The render pipeline's own default material (URP Lit). Never depends on a shader's name.</summary>
-        static Material DefaultMaterial(Renderer renderer)
-        {
-            var pipeline = GraphicsSettings.currentRenderPipeline;
-            if (pipeline != null && pipeline.defaultMaterial != null) return pipeline.defaultMaterial;
-            if (renderer != null && renderer.sharedMaterial != null) return renderer.sharedMaterial;
-            return new Material(Shader.Find("Standard"));
-        }
-
-        /// <summary>A solid colour that shows on both sides of a surface (for hand-built meshes like the slide).</summary>
-        public static void TintDoubleSided(GameObject go, Color color) => Apply(go, color, false, true);
-
-        static void Apply(GameObject go, Color color, bool transparent, bool doubleSided)
-        {
-            Directory.CreateDirectory(Folder);
-            string path = Folder + "/M_Graybox_" + (transparent ? "Water_" : "") + (doubleSided ? "DS_" : "") + ColorUtility.ToHtmlStringRGBA(color) + ".mat";
-
-            var renderer = go.GetComponent<Renderer>();
-            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
-
-            if (mat == null)
-            {
-                mat = NewMaterial(renderer);
-
-                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
-                if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
-
-                if (doubleSided)
-                {
-                    if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
-                    mat.doubleSidedGI = true;
-                }
-
-                if (transparent)
-                {
-                    // URP Lit transparent settings (what the "Surface Type: Transparent" dropdown sets).
-                    mat.SetFloat("_Surface", 1f);
-                    mat.SetFloat("_Blend", 0f);
-                    mat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
-                    mat.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
-                    mat.SetFloat("_ZWrite", 0f);
-                    mat.SetOverrideTag("RenderType", "Transparent");
-                    mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-                    mat.renderQueue = (int)RenderQueue.Transparent;
-                }
-
-                AssetDatabase.CreateAsset(mat, path);
-            }
-
-            renderer.sharedMaterial = mat;
         }
     }
 }

@@ -23,6 +23,7 @@ namespace Badeland.World
 
         Renderer _renderer;
         Material _material;
+        string _textureProperty;
         Vector3 _home;
         Vector2 _offset;
 
@@ -32,6 +33,7 @@ namespace Badeland.World
             _home = transform.position;
             _renderer = GetComponent<Renderer>();
             if (_renderer != null) _material = _renderer.material; // our own copy of the material
+            if (_material != null) _textureProperty = _material.HasProperty("_BaseMap") ? "_BaseMap" : "_MainTex";
         }
 
         void OnDestroy()
@@ -43,7 +45,7 @@ namespace Badeland.World
         {
             float speed = Mathf.Lerp(calmSpeed, stormySpeed, Roughness);
             _offset += new Vector2(speed, speed * 0.6f) * Time.deltaTime;
-            if (_material != null && _material.HasProperty("_BaseMap")) _material.SetTextureOffset("_BaseMap", _offset);
+            if (_material != null && _textureProperty != null && _material.HasProperty(_textureProperty)) _material.SetTextureOffset(_textureProperty, _offset);
 
             float t = (float)GameClock.Now;
             float sway = Mathf.Sin(t * 1.7f) * 0.6f + Mathf.Sin(t * 2.9f + 1f) * 0.4f;

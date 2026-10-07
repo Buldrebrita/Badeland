@@ -185,10 +185,33 @@ namespace Badeland.EditorTools
                 }
             }
 
+            // Build the surface, work out its normals, then add a second copy facing the other way, so the slide shows
+            // from every side whatever the material does (and whichever way the triangles happen to wind).
+            var front = new Mesh();
+            front.SetVertices(vertices);
+            front.SetTriangles(triangles, 0);
+            front.RecalculateNormals();
+            var frontNormals = new List<Vector3>();
+            front.GetNormals(frontNormals);
+
+            int count = vertices.Count;
+            var allVertices = new List<Vector3>(vertices);
+            allVertices.AddRange(vertices);
+            var allNormals = new List<Vector3>(frontNormals);
+            foreach (var n in frontNormals) allNormals.Add(-n);
+            var allTriangles = new List<int>(triangles);
+            for (int i = 0; i < triangles.Count; i += 3)
+            {
+                allTriangles.Add(triangles[i] + count);
+                allTriangles.Add(triangles[i + 2] + count);
+                allTriangles.Add(triangles[i + 1] + count);
+            }
+            Object.DestroyImmediate(front);
+
             var mesh = new Mesh { name = name };
-            mesh.SetVertices(vertices);
-            mesh.SetTriangles(triangles, 0);
-            mesh.RecalculateNormals();
+            mesh.SetVertices(allVertices);
+            mesh.SetNormals(allNormals);
+            mesh.SetTriangles(allTriangles, 0);
             mesh.RecalculateBounds();
 
             Directory.CreateDirectory("Assets/_Project/Art/Environment");
@@ -200,7 +223,7 @@ namespace Badeland.EditorTools
             go.transform.SetParent(parent, false);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             go.AddComponent<MeshRenderer>();
-            GrayboxMaterials.TintDoubleSided(go, color); // double-sided, so it shows from every side
+            GrayboxMaterials.Tint(go, color);
         }
 
         // ------------------------------------------------------------------ hidden trap and treasure room
@@ -506,7 +529,14 @@ namespace Badeland.EditorTools
             RenderSettings.ambientGroundColor = new Color(0.42f, 0.5f, 0.55f);
             RenderSettings.fog = false;
 
-            // Post-processing: a little bloom, richer colours, a soft vignette.
+            // Post-processing: a little bloom, richer colours, a soft vignette. Only works when URP is the active render
+            // pipeline; without it Unity ignores it, so it is skipped (see docs/S6_MONSTER_AND_MORE.md).
+            if (GraphicsSettings.currentRenderPipeline == null)
+            {
+                Debug.Log("Badeland: URP is not the active render pipeline in this project, so the post-processing look is skipped.");
+                return;
+            }
+
             const string path = "Assets/_Project/Settings/PostProcessing.asset";
             var profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(path);
             if (profile == null)
