@@ -168,6 +168,8 @@ Monster design direction: gigantic aquatic creature, tentacles, huge eyes, giant
 
 ## 9. Inside the monster (Chapter 2)
 
+A first proposal for the areas, the rules of the world and the open story choices is in [CHAPTER2.md](CHAPTER2.md).
+
 Not a stomach. A surreal fantasy ecosystem: giant caves, bioluminescent forests, rivers, mountains, floating islands, strange villages, ancient ruins, organic structures, underground oceans, strange creatures, lost human settlements. Mysterious, strange, beautiful, slightly unsettling.
 
 **Questions the player should come to ask, gradually:**

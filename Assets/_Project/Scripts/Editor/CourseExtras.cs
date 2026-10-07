@@ -318,36 +318,56 @@ namespace Badeland.EditorTools
             GrayboxMaterials.Tint(section, new Color(0.32f, 0.12f, 0.52f));
             Object.DestroyImmediate(section.GetComponent<Collider>());
 
-            var teal = new Color(0.08f, 0.26f, 0.32f);
-            var red = new Color(0.5f, 0.05f, 0.1f);
-            var tooth = new Color(0.97f, 0.97f, 0.9f);
+            // A deep-sea horror: near-black, with glowing red eyes, a gaping mouth and crooked teeth.
+            var skin = new Color(0.04f, 0.1f, 0.13f);
+            var flesh = new Color(0.32f, 0.03f, 0.06f);
+            var tooth = new Color(0.85f, 0.83f, 0.7f);
+            var teal = skin;
 
             // ---- The head. It faces its local +Z, and sits below the sea until the strike.
             var head = new GameObject("Monster Head");
             head.transform.position = new Vector3(12f, -30f, -34f);
 
-            Part(head.transform, PrimitiveType.Sphere, "Skull", new Vector3(0f, 0f, 0f), Vector3.one * 12f, teal);
-            Part(head.transform, PrimitiveType.Sphere, "Upper Jaw", new Vector3(0f, -0.5f, 5f), new Vector3(8f, 2.8f, 9f), teal);
-            Part(head.transform, PrimitiveType.Sphere, "Inside Of Mouth", new Vector3(0f, -1.3f, 3.5f), new Vector3(6.4f, 2f, 7f), red);
+            Part(head.transform, PrimitiveType.Sphere, "Skull", new Vector3(0f, 0f, 0f), Vector3.one * 12f, skin);
+            Part(head.transform, PrimitiveType.Sphere, "Brow", new Vector3(0f, 3.4f, 3.2f), new Vector3(9f, 2.2f, 5f), skin * 0.8f);
+            Part(head.transform, PrimitiveType.Sphere, "Upper Jaw", new Vector3(0f, -0.5f, 5f), new Vector3(8f, 2.8f, 9f), skin);
+            Part(head.transform, PrimitiveType.Sphere, "Inside Of Mouth", new Vector3(0f, -1.3f, 3.5f), new Vector3(6.4f, 2f, 7f), flesh);
 
             var jawPivot = new GameObject("Jaw Pivot").transform; // the lower jaw swings open around this
             jawPivot.SetParent(head.transform, false);
             jawPivot.localPosition = new Vector3(0f, -2f, 1.5f);
-            Part(jawPivot, PrimitiveType.Sphere, "Lower Jaw", new Vector3(0f, 0f, 3.8f), new Vector3(7.2f, 2.2f, 8.4f), teal);
+            Part(jawPivot, PrimitiveType.Sphere, "Lower Jaw", new Vector3(0f, 0f, 3.8f), new Vector3(7.2f, 2.2f, 8.4f), skin);
 
-            for (int i = -2; i <= 2; i++)
+            // Crooked teeth of different lengths, leaning every which way.
+            var rng = new System.Random(5);
+            for (int i = -3; i <= 3; i++)
             {
-                Part(head.transform, PrimitiveType.Cube, "Tooth", new Vector3(i * 1.5f, -2.1f, 7.9f), new Vector3(0.55f, 1.3f, 0.55f), tooth);
-                Part(jawPivot, PrimitiveType.Cube, "Tooth", new Vector3(i * 1.5f, 1.2f, 7.3f), new Vector3(0.55f, 1.3f, 0.55f), tooth);
+                float upperLength = 1.2f + (float)rng.NextDouble() * 1.6f;
+                float lowerLength = 1.0f + (float)rng.NextDouble() * 1.6f;
+                var upper = Part(head.transform, PrimitiveType.Cube, "Tooth", new Vector3(i * 1.05f, -1.9f - upperLength * 0.25f, 7.7f + (float)rng.NextDouble() * 0.4f), new Vector3(0.5f, upperLength, 0.5f), tooth);
+                upper.localRotation = Quaternion.Euler((float)rng.NextDouble() * 24f - 12f, 0f, (float)rng.NextDouble() * 24f - 12f);
+                var lower = Part(jawPivot, PrimitiveType.Cube, "Tooth", new Vector3(i * 1.05f, 1.0f + lowerLength * 0.25f, 7.1f + (float)rng.NextDouble() * 0.4f), new Vector3(0.5f, lowerLength, 0.5f), tooth);
+                lower.localRotation = Quaternion.Euler((float)rng.NextDouble() * 24f - 12f, 0f, (float)rng.NextDouble() * 24f - 12f);
             }
 
+            // Glowing red eyes with thin vertical slit pupils.
             var eyes = new Transform[2];
             var pupils = new Transform[2];
             for (int i = 0; i < 2; i++)
             {
                 float side = i == 0 ? -1f : 1f;
-                eyes[i] = Part(head.transform, PrimitiveType.Sphere, "Eye", new Vector3(side * 2.9f, 2.6f, 4.4f), Vector3.one * 3.2f, new Color(1f, 1f, 0.7f));
-                pupils[i] = Part(head.transform, PrimitiveType.Sphere, "Pupil", new Vector3(side * 2.9f, 2.6f, 5.8f), Vector3.one * 1.6f, Color.black);
+                eyes[i] = PartGlow(head.transform, PrimitiveType.Sphere, "Eye", new Vector3(side * 2.9f, 2.6f, 4.4f), Vector3.one * 3.2f, new Color(1f, 0.12f, 0.05f), 2.5f);
+                pupils[i] = Part(head.transform, PrimitiveType.Sphere, "Pupil", new Vector3(side * 2.9f, 2.6f, 5.8f), new Vector3(0.45f, 2.4f, 0.8f), Color.black);
+            }
+
+            // Faint cold lights along the skull, like the deep-sea creatures they are not.
+            for (int i = 0; i < 16; i++)
+            {
+                double theta = rng.NextDouble() * Mathf.PI * 2f;
+                double up = 0.15 + rng.NextDouble() * 0.8;
+                double ring = System.Math.Sqrt(1.0 - up * up);
+                Vector3 direction = new Vector3((float)(ring * System.Math.Cos(theta)), (float)up, (float)(ring * System.Math.Sin(theta)));
+                PartGlow(head.transform, PrimitiveType.Sphere, "Light Spot", direction * 5.95f, Vector3.one * 0.5f, new Color(0.1f, 0.9f, 0.9f), 2f);
             }
 
             // ---- The body: big humps that rise out of the sea with the head.
@@ -403,6 +423,19 @@ namespace Badeland.EditorTools
             section.SetActive(false);
             head.SetActive(false);
             body.SetActive(false);
+        }
+
+        // Like Part, but the colour glows.
+        static Transform PartGlow(Transform parent, PrimitiveType type, string name, Vector3 localPosition, Vector3 localScale, Color color, float strength)
+        {
+            var go = GameObject.CreatePrimitive(type);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPosition;
+            go.transform.localScale = localScale;
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            GrayboxMaterials.TintGlow(go, color, strength);
+            return go.transform;
         }
 
         // A coloured primitive without a collider, parented and placed relative to its parent.

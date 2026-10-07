@@ -17,13 +17,16 @@ namespace Badeland.EditorTools
     {
         const string Folder = "Assets/_Project/Art/Materials";
 
-        public static void Tint(GameObject go, Color color) => Apply(go, color, false);
+        public static void Tint(GameObject go, Color color) => Apply(go, color, false, 0f);
+
+        /// <summary>A colour that glows (bioluminescent plants, the monster's eyes). Strength 1 is a soft glow, 3 is bright.</summary>
+        public static void TintGlow(GameObject go, Color color, float strength = 1.5f) => Apply(go, color, false, strength);
 
         /// <summary>Semi-transparent material for water, markers and the like.</summary>
-        public static void TintWater(GameObject go, Color color) => Apply(go, color, true);
+        public static void TintWater(GameObject go, Color color) => Apply(go, color, true, 0f);
 
         /// <summary>Kept for old callers. (The slide's mesh is double-sided in the mesh itself.)</summary>
-        public static void TintDoubleSided(GameObject go, Color color) => Apply(go, color, false);
+        public static void TintDoubleSided(GameObject go, Color color) => Apply(go, color, false, 0f);
 
         /// <summary>A see-through blue for small bodies of water (the secret room's flood).</summary>
         public static void ApplyWater(GameObject go, Color tint) => TintWater(go, tint);
@@ -58,10 +61,10 @@ namespace Badeland.EditorTools
             renderer.sharedMaterial = mat;
         }
 
-        static void Apply(GameObject go, Color color, bool transparent)
+        static void Apply(GameObject go, Color color, bool transparent, float glow)
         {
             Directory.CreateDirectory(Folder);
-            string path = Folder + "/M_Graybox_" + (transparent ? "Water_" : "") + ColorUtility.ToHtmlStringRGBA(color) + ".mat";
+            string path = Folder + "/M_Graybox_" + (transparent ? "Water_" : "") + (glow > 0f ? "Glow" + Mathf.RoundToInt(glow * 10f) + "_" : "") + ColorUtility.ToHtmlStringRGBA(color) + ".mat";
 
             var renderer = go.GetComponent<Renderer>();
             Shader shader = Template().shader;
@@ -73,6 +76,7 @@ namespace Badeland.EditorTools
 
             SetColor(mat, color);
             if (transparent) MakeTransparent(mat);
+            if (glow > 0f) MakeGlow(mat, color, glow);
 
             if (create) AssetDatabase.CreateAsset(mat, path);
             else EditorUtility.SetDirty(mat);
@@ -106,6 +110,14 @@ namespace Badeland.EditorTools
             if (mat.HasProperty("_BaseMap")) return "_BaseMap";
             if (mat.HasProperty("_MainTex")) return "_MainTex";
             return null;
+        }
+
+        // Makes a material give off light of its own colour.
+        static void MakeGlow(Material mat, Color color, float strength)
+        {
+            mat.EnableKeyword("_EMISSION");
+            mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            if (mat.HasProperty("_EmissionColor")) mat.SetColor("_EmissionColor", color * strength);
         }
 
         // Switches a material to alpha blending, in the way the active shader expects.

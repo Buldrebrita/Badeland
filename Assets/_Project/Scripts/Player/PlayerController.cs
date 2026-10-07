@@ -56,6 +56,9 @@ namespace Badeland.Player
         /// <summary>Fired once when this player is swallowed.</summary>
         public event Action Swallowed;
 
+        /// <summary>Fired when a swallowed player comes back (waking up inside the monster).</summary>
+        public event Action Revived;
+
         public bool IsGrounded { get; private set; }
         public bool IsSwimming { get; private set; }
         /// <summary>Metres of the body below the water surface (0 when not in water).</summary>
@@ -249,6 +252,18 @@ namespace Badeland.Player
             foreach (var r in GetComponentsInChildren<Renderer>()) r.enabled = false;
             if (_cc != null) _cc.enabled = false;
             Swallowed?.Invoke();
+        }
+
+        /// <summary>Bring a swallowed player back: visible again and able to move.</summary>
+        public void Revive()
+        {
+            if (!IsEaten) return;
+            IsEaten = false;
+            foreach (var r in GetComponentsInChildren<Renderer>()) r.enabled = true;
+            if (_cc != null && IsLocal && !IsExternallyControlled) _cc.enabled = true; // other players' avatars are moved by the network
+            _horizontalVelocity = Vector3.zero;
+            _verticalVelocity = 0f;
+            Revived?.Invoke();
         }
 
         /// <summary>Instantly move the player somewhere else (trap doors, secret room exits).</summary>

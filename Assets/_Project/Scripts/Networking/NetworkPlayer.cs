@@ -2,6 +2,7 @@ using Badeland.CameraSystem;
 using Badeland.Player;
 using Badeland.Systems;
 using Badeland.World;
+using UnityEngine.SceneManagement;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -112,6 +113,8 @@ namespace Badeland.Networking
                 if (IsServer) MonsterEncounter.BroadcastStart = (strike, rails, warning) => StartEncounterClientRpc(strike, rails, warning);
 
                 _controller.Swallowed += OnLocalSwallowed;
+                _controller.Revived += OnLocalRevived;
+                if (IsServer) ChapterTransition.NetworkLoad = name => NetworkManager.SceneManager.LoadScene(name, LoadSceneMode.Single);
 
                 var rigForPrimary = IsoCameraRig.Instance;
                 if (rigForPrimary != null) rigForPrimary.PrimaryTarget = transform;
@@ -126,7 +129,7 @@ namespace Badeland.Networking
                 _cc.enabled = false;
                 _heldFish.OnValueChanged += OnHeldFishChanged;
                 OnHeldFishChanged(-1, _heldFish.Value);
-                _eaten.OnValueChanged += (_, eaten) => { if (eaten) _controller.Eat(); };
+                _eaten.OnValueChanged += (_, eaten) => { if (eaten) _controller.Eat(); else _controller.Revive(); };
                 if (_eaten.Value) _controller.Eat();
                 _state.OnValueChanged += (_, v) => _hasState = true;
                 if (_state.Value.position != Vector3.zero)
@@ -139,10 +142,23 @@ namespace Badeland.Networking
             // The camera frames every player.
             var rig = IsoCameraRig.Instance;
             if (rig != null) rig.AddTarget(transform);
+
+            // Players survive a change of scene (the next chapter). The new scene has its own camera, so join it.
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            var newRig = IsoCameraRig.Instance;
+            if (newRig == null) return;
+            newRig.AddTarget(transform);
+            if (IsOwner) newRig.PrimaryTarget = transform;
         }
 
         public override void OnNetworkDespawn()
         {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+
             if (ByClient.TryGetValue(OwnerClientId, out var registered) && registered == this) ByClient.Remove(OwnerClientId);
 
             var rig = IsoCameraRig.Instance;
@@ -160,6 +176,8 @@ namespace Badeland.Networking
                 MonsterEncounter.IsAuthority = null;
                 MonsterEncounter.BroadcastStart = null;
                 _controller.Swallowed -= OnLocalSwallowed;
+                _controller.Revived -= OnLocalRevived;
+                ChapterTransition.NetworkLoad = null;
             }
             else
             {
@@ -208,6 +226,7 @@ namespace Badeland.Networking
         }
 
         void OnLocalSwallowed() => _eaten.Value = true;
+        void OnLocalRevived() => _eaten.Value = false;
 
         // ---------------------------------------------------------------- trap, treasure, monster
 

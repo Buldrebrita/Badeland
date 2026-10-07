@@ -81,6 +81,10 @@ namespace Badeland.World
         [Tooltip("Where the slapping tentacles come out of the sea.")]
         public Transform[] tentacleBases;
 
+        [Header("What comes next")]
+        [Tooltip("The scene to load after the screen has been black for a while. Leave empty to stop at 'To be continued'.")]
+        public string nextScene = "Inside_01_WakingShore";
+
         [Header("Sound (optional)")]
         [Tooltip("A recorded voice saying the warning. If empty, the computer's own voice is used on Windows.")]
         public AudioClip voiceClip;
@@ -191,6 +195,7 @@ namespace Badeland.World
             UpdateMonster(e);
             UpdateAttacks(e);
             UpdateEnding(e);
+            UpdateNextChapter(e);
         }
 
         void WaitForStart()
@@ -873,6 +878,19 @@ namespace Badeland.World
                 if (!p.IsEaten) everyoneEaten = false;
 
             if (e >= duration + 0.2f || everyoneEaten) _endAt = e;
+        }
+
+        bool _transitionStarted;
+
+        // A few seconds after "To be continued...", everyone wakes up inside the monster.
+        void UpdateNextChapter(float e)
+        {
+            if (_transitionStarted || _endAt < 0f || string.IsNullOrEmpty(nextScene)) return;
+            if (e < _endAt + 8f) return;
+
+            _transitionStarted = true;
+            bool authority = IsAuthority == null || IsAuthority();
+            if (authority) ChapterTransition.Go(nextScene);
         }
 
         void OnGUI()
