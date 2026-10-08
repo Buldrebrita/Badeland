@@ -29,7 +29,9 @@ namespace Badeland.EditorTools
         // The cavern is an uneven oval: centre x = Cx, half-widths Rx and Rz, with a wobbly outline.
         const float Cx = -1f, Rx = 40f, Rz = 24f;
         const int WallSegments = 128;
-        static readonly float[] WallRows = { -8f, -1f, 1f, 3f, 5f, 7f, 9f, 11f, 13f, 15.5f };
+        // The walls rise to 15.5 m, then curve inward into the roof, which closes at 22 m.
+        const float WallTop = 15.5f, RoofTop = 22f;
+        static readonly float[] WallRows = { -8f, -1f, 1f, 3f, 5f, 7f, 9f, 11f, 13f, 15.5f, 17.5f, 19f, 20.3f, 21.2f, 22f };
 
         // The lake basin (where the ground dips below the water), and the pools of digestive fluid.
         const float LakeMinX = 9f, LakeMaxX = 19f, LakeHalfZ = 4f, LakeBlend = 9f, LakeDepth = -4f;
@@ -81,7 +83,6 @@ namespace Badeland.EditorTools
             BuildGround();
             BuildWalls();
             BuildLivingWalls(rng, glowLights);
-            BuildRibs();
             BuildEye();
             var lake = BuildLake();
             BuildDock(glowLights);
@@ -107,6 +108,9 @@ namespace Badeland.EditorTools
                 spot.rotation = Quaternion.Euler(0f, 90f, 0f);
                 spawns.Add(spot);
             }
+
+            var bounds = new GameObject("Area Bounds").AddComponent<AreaBounds>();
+            bounds.centerX = Cx; bounds.halfX = Rx; bounds.halfZ = Rz;
 
             var safety = new GameObject("Fall Respawn").AddComponent<FallRespawn>();
             safety.fallbackPoint = spawns[0];
@@ -163,9 +167,17 @@ namespace Badeland.EditorTools
         // A point on the wall: angle around the cavern, and height. Higher up, the wall leans in like a dome and bulges.
         static Vector3 WallPos(float a, float h)
         {
-            float lean = h > 0f ? 0.22f * Mathf.Pow(h / 15f, 2f) : 0f;
+            float lean = h > 0f ? 0.22f * Mathf.Pow(Mathf.Min(h, WallTop) / 15f, 2f) : 0f;
             float bump = h > 0f ? Mathf.Min(h / 4f, 1f) * (0.035f * Mathf.Sin(a * 17f + h * 0.9f) + 0.03f * Mathf.Sin(a * 29f - h * 0.5f + 1f) + 0.014f * Mathf.Sin(a * 53f + h * 1.9f) + 0.01f * Mathf.Sin(a * 41f - h * 2.6f + 2f)) : 0f;
             float rho = Scale(a) * (1f - lean + bump);
+            if (h > WallTop)
+            {
+                // The roof: the wall's top ring shrinks in like a dome until it closes.
+                float u = Mathf.Clamp01((h - WallTop) / (RoofTop - WallTop));
+                float topLean = 0.22f * Mathf.Pow(WallTop / 15f, 2f);
+                float topBump = Mathf.Min(WallTop / 4f, 1f) * (0.035f * Mathf.Sin(a * 17f + WallTop * 0.9f) + 0.03f * Mathf.Sin(a * 29f - WallTop * 0.5f + 1f));
+                rho = Scale(a) * (1f - topLean + topBump) * Mathf.Sqrt(Mathf.Max(0f, 1f - u * u));
+            }
             return new Vector3(Cx + Rx * rho * Mathf.Cos(a), h, Rz * rho * Mathf.Sin(a));
         }
 
@@ -343,30 +355,9 @@ namespace Badeland.EditorTools
             return _segments[Mathf.Clamp(Mathf.FloorToInt(t * WallSegments), 0, WallSegments - 1)].transform;
         }
 
-        // What makes it feel like the inside of something alive: glowing veins and pulsing organs on the walls.
+        // What makes it feel like the inside of something alive: big pulsing organs on the walls.
         static void BuildLivingWalls(System.Random rng, List<Light> lights)
         {
-            var veinColor = new Color(0.95f, 0.15f, 0.3f);
-
-            for (int i = 0; i < 60; i++)
-            {
-                float a = (float)rng.NextDouble() * Mathf.PI * 2f;
-                float h = 1.5f + (float)rng.NextDouble() * 12f;
-                Vector3 wall = WallPos(a, h);
-                Vector3 inward = new Vector3(Cx - wall.x, 0f, -wall.z).normalized;
-                Vector3 position = wall + inward * 0.35f;
-                Vector3 tangent = new Vector3(-Rx * Mathf.Sin(a), 0f, Rz * Mathf.Cos(a)).normalized;
-                Vector3 direction = tangent + Vector3.up * ((float)rng.NextDouble() - 0.4f);
-
-                float length = 8f + (float)rng.NextDouble() * 12f;
-                var vein = S3SceneBuilder.Cyl("Vein", position, new Vector3(0.3f, length * 0.5f, 0.3f), veinColor);
-                GrayboxMaterials.TintGlow(vein, veinColor, 1.2f);
-                Object.DestroyImmediate(vein.GetComponent<Collider>());
-                vein.transform.rotation = Quaternion.FromToRotation(Vector3.up, direction.normalized);
-                vein.transform.SetParent(SegmentAt(a), true);
-                if (i % 8 == 0) lights.Add(AddGlow(position + inward * 2f, veinColor, 1.6f, 14f, SegmentAt(a)));
-            }
-
             // Big organs bulging out of the walls that swell with each breath.
             float[] organAngles = { 0.5f, 1.5f, 2.6f, 3.6f, 4.4f, 5.5f };
             for (int i = 0; i < organAngles.Length; i++)
@@ -464,14 +455,11 @@ namespace Badeland.EditorTools
                 foreach (float z in new[] { -1.8f, 1.8f })
                 {
                     var post = S3SceneBuilder.Cyl("Post", new Vector3(x, -2.4f, z), new Vector3(0.3f, 3.6f, 0.3f), wood * 0.8f);
-                    Object.DestroyImmediate(post.GetComponent<Collider>());
                     post.transform.SetParent(root, true);
 
                     var rail = S3SceneBuilder.Box("Rope Rail", new Vector3(x + 1.5f, 1.0f, z), new Vector3(3f, 0.08f, 0.08f), rope);
-                    Object.DestroyImmediate(rail.GetComponent<Collider>());
                     rail.transform.SetParent(root, true);
                     var top = S3SceneBuilder.Cyl("Rail Post", new Vector3(x, 0.6f, z), new Vector3(0.18f, 0.6f, 0.18f), wood);
-                    Object.DestroyImmediate(top.GetComponent<Collider>());
                     top.transform.SetParent(root, true);
 
                     if (i % 6 == 0 && z > 0f)
@@ -486,6 +474,15 @@ namespace Badeland.EditorTools
         }
 
         // ------------------------------------------------------------------ props: rocks, crystals, hanging tendrils
+
+        // Plants and rocks grow thickly around the edges of the cavern and thinly in the middle.
+        static bool EdgeBias(System.Random rng, float x, float z)
+        {
+            float nx = (x - Cx) / Rx, nz = z / Rz;
+            float rho = Mathf.Sqrt(nx * nx + nz * nz) / Scale(Mathf.Atan2(nz, nx));
+            float chance = 0.04f + 0.96f * Smooth(0.45f, 0.85f, rho);
+            return rng.NextDouble() < chance;
+        }
 
         static bool FreeSpot(float x, float z, float margin)
         {
@@ -503,17 +500,17 @@ namespace Badeland.EditorTools
         static void BuildProps(System.Random rng, List<Light> lights)
         {
             var rocks = new GameObject("Rocks").transform;
-            for (int tries = 0, placed = 0; tries < 300 && placed < 26; tries++)
+            for (int tries = 0, placed = 0; tries < 1500 && placed < 34; tries++)
             {
                 float x = Cx - Rx + (float)rng.NextDouble() * Rx * 2f, z = -Rz + (float)rng.NextDouble() * Rz * 2f;
-                if (!FreeSpot(x, z, 2f)) continue;
+                if (!FreeSpot(x, z, 1.5f) || !EdgeBias(rng, x, z)) continue;
                 placed++;
                 int count = 2 + rng.Next(3);
                 for (int k = 0; k < count; k++)
                 {
                     float size = 0.9f + (float)rng.NextDouble() * 2.2f;
                     var pos = new Vector3(x + (float)rng.NextDouble() * 2f - 1f, Height(x, z) + size * 0.15f, z + (float)rng.NextDouble() * 2f - 1f);
-                    var rock = S3SceneBuilder.Ball("Rock", pos, size, new Color(0.3f, 0.24f, 0.34f) * (0.8f + (float)rng.NextDouble() * 0.5f), false);
+                    var rock = S3SceneBuilder.Ball("Rock", pos, size, new Color(0.3f, 0.24f, 0.34f) * (0.8f + (float)rng.NextDouble() * 0.5f), true);
                     rock.transform.localScale = new Vector3(size, size * (0.5f + (float)rng.NextDouble() * 0.4f), size * (0.8f + (float)rng.NextDouble() * 0.4f));
                     rock.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
                     rock.transform.SetParent(rocks, true);
@@ -523,10 +520,10 @@ namespace Badeland.EditorTools
             // Glowing crystal and coral clusters.
             Color[] colors = { new Color(1f, 0.25f, 0.8f), new Color(0.2f, 0.9f, 1f), new Color(1f, 0.6f, 0.2f), new Color(0.6f, 0.4f, 1f) };
             var crystals = new GameObject("Crystals").transform;
-            for (int tries = 0, placed = 0; tries < 300 && placed < 28; tries++)
+            for (int tries = 0, placed = 0; tries < 1500 && placed < 36; tries++)
             {
                 float x = Cx - Rx + (float)rng.NextDouble() * Rx * 2f, z = -Rz + (float)rng.NextDouble() * Rz * 2f;
-                if (!FreeSpot(x, z, 2.5f)) continue;
+                if (!FreeSpot(x, z, 1.8f) || !EdgeBias(rng, x, z)) continue;
                 placed++;
                 Color glow = colors[rng.Next(colors.Length)];
                 int count = 4 + rng.Next(4);
@@ -539,27 +536,10 @@ namespace Badeland.EditorTools
                     shard.transform.position = pos;
                     shard.transform.localScale = new Vector3(0.35f, height * 0.5f, 0.35f);
                     shard.transform.rotation = Quaternion.Euler((float)rng.NextDouble() * 40f - 20f, (float)rng.NextDouble() * 360f, (float)rng.NextDouble() * 40f - 20f);
-                    GrayboxMaterials.TintGlow(shard, glow, 1.4f);
-                    Object.DestroyImmediate(shard.GetComponent<Collider>());
+                    GrayboxMaterials.TintGlow(shard, glow, 1.4f); // solid: you cannot walk through it
                     shard.transform.SetParent(crystals, true);
                 }
                 if (placed % 3 == 0) lights.Add(AddGlow(new Vector3(x, Height(x, z) + 1.5f, z), glow, 2f, 10f, crystals));
-            }
-
-            // Fleshy tendrils hanging from the upper walls, with glowing tips.
-            for (int i = 0; i < 22; i++)
-            {
-                float a = (float)rng.NextDouble() * Mathf.PI * 2f;
-                Vector3 wall = WallPos(a, 13f);
-                Vector3 inward = new Vector3(Cx - wall.x, 0f, -wall.z).normalized;
-                Vector3 top = wall + inward * 1.2f;
-                float length = 4f + (float)rng.NextDouble() * 5f;
-                var tendril = S3SceneBuilder.Cyl("Tendril", top - Vector3.up * length * 0.5f, new Vector3(0.45f, length * 0.5f, 0.45f), new Color(0.6f, 0.2f, 0.4f));
-                Object.DestroyImmediate(tendril.GetComponent<Collider>());
-                tendril.transform.SetParent(SegmentAt(a), true);
-                var tip = S3SceneBuilder.Ball("Tendril Tip", top - Vector3.up * length, 0.9f, colors[i % colors.Length], false);
-                GrayboxMaterials.TintGlow(tip, colors[i % colors.Length], 1.6f);
-                tip.transform.SetParent(SegmentAt(a), true);
             }
         }
 
@@ -607,15 +587,10 @@ namespace Badeland.EditorTools
             S3SceneBuilder.Box("Choke Wall North", new Vector3(-16f, 1.5f, 14.8f), new Vector3(3f, 7f, 15.6f), Stone);
             S3SceneBuilder.Box("Choke Wall South", new Vector3(-16f, 1.5f, -14.8f), new Vector3(3f, 7f, 15.6f), Stone);
 
-            // The plate sits on a level patch of ground (see FlatSpots), a stone slab just proud of the floor with a glowing ring around it.
+            // The plate sits on a level patch of ground (see FlatSpots), a plain stone button just proud of the floor.
             float plateTop = Height(PlateX, PlateZ) + 0.3f;
             S3SceneBuilder.Box("Plate Step", new Vector3(PlateX, plateTop - 0.18f - 0.6f, PlateZ), new Vector3(7.6f, 1.2f, 7.6f), Stone * 0.9f);
             var plateObject = S3SceneBuilder.Box("Pressure Plate", new Vector3(PlateX, plateTop - 0.6f, PlateZ), new Vector3(6f, 1.2f, 6f), new Color(0.35f, 0.3f, 0.4f));
-            var ringColor = new Color(0.3f, 0.9f, 1f);
-            var ring = S3SceneBuilder.Cyl("Plate Ring", new Vector3(PlateX, plateTop + 0.01f, PlateZ), new Vector3(6.6f, 0.01f, 6.6f), ringColor);
-            GrayboxMaterials.TintGlow(ring, ringColor, 1.2f);
-            Object.DestroyImmediate(ring.GetComponent<Collider>());
-            AddGlow(new Vector3(PlateX, plateTop + 2.5f, PlateZ), ringColor, 2f, 10f);
             var plate = plateObject.AddComponent<PressurePlate>();
             plate.visual = plateObject.GetComponent<Renderer>();
 
@@ -635,28 +610,112 @@ namespace Badeland.EditorTools
 
         static void BuildReviveZones()
         {
-            // The start of the area: ghosts must float back here. Then a checkpoint beyond the gate, and one on the far bank.
-            Zone(new Vector3(-35f, 0f, 1f), 7f, "Start", false, new Color(0.7f, 0.85f, 1f));
-            Zone(new Vector3(-8f, 0f, 0f), 5f, "Checkpoint", true, new Color(0.3f, 1f, 0.6f));
-            Zone(new Vector3(31f, 0f, 0f), 5f, "Checkpoint", true, new Color(0.3f, 1f, 0.6f));
+            // The start of the area (where everyone restarts until a checkpoint is activated), then two checkpoints. Each
+            // checkpoint is a grey stone altar with a carving of the item it wants; the item must be found and laid on it.
+            StartZone(new Vector3(-35f, 0f, 1f), 7f);
+            Checkpoint(new Vector3(-8f, 0f, 0f), "key", new Vector3(-27f, 0f, -13f));
+            Checkpoint(new Vector3(31f, 0f, 0f), "cog", new Vector3(-3f, 0f, -15f));
         }
 
-        static void Zone(Vector3 position, float radius, string label, bool livingRevive, Color color)
+        static void StartZone(Vector3 position, float radius)
         {
             position.y = Height(position.x, position.z) + 0.05f;
-            var zone = new GameObject(label + " Zone");
+            var zone = new GameObject("Start Zone");
             zone.transform.position = position;
             var component = zone.AddComponent<ReviveZone>();
             component.radius = radius;
-            component.label = label;
-            component.livingPlayersRevive = livingRevive;
+            component.label = "Start";
+            component.livingPlayersRevive = false;
             component.respawn = zone.transform;
+        }
 
-            var ring = S3SceneBuilder.Cyl("Zone Ring", position + Vector3.up * 0.03f, new Vector3(radius * 1.2f, 0.01f, radius * 1.2f), color);
-            GrayboxMaterials.TintGlow(ring, color, 0.8f);
-            Object.DestroyImmediate(ring.GetComponent<Collider>());
-            ring.transform.SetParent(zone.transform, true);
-            component.beacon = AddGlow(position + Vector3.up * 3f, color, 1.5f, 12f, zone.transform);
+        static void Checkpoint(Vector3 position, string itemId, Vector3 itemPosition)
+        {
+            position.y = Height(position.x, position.z);
+            var stoneGrey = new Color(0.55f, 0.55f, 0.58f);
+
+            var zone = new GameObject("Checkpoint Altar (" + itemId + ")");
+            zone.transform.position = position + Vector3.up * 0.05f;
+
+            // A grey stone altar, with the carving of the item on top.
+            S3SceneBuilder.Box("Altar Base", position + Vector3.up * 0.2f, new Vector3(2.6f, 1.6f, 2.6f), stoneGrey * 0.85f).transform.SetParent(zone.transform, true);
+            var top = S3SceneBuilder.Box("Altar Top", position + Vector3.up * 1.05f, new Vector3(3f, 0.2f, 3f), stoneGrey);
+            top.transform.SetParent(zone.transform, true);
+            float topY = position.y + 1.15f;
+            var carving = ItemShape(itemId, new Vector3(position.x, topY + 0.015f, position.z), 1f, new Color(0.25f, 0.25f, 0.28f), true);
+            carving.transform.SetParent(zone.transform, true);
+
+            var spot = new GameObject("Item Spot").transform;
+            spot.SetParent(zone.transform, true);
+            spot.position = new Vector3(position.x, topY + 0.12f, position.z);
+
+            var respawn = new GameObject("Respawn").transform;
+            respawn.SetParent(zone.transform, true);
+            respawn.position = position + new Vector3(0f, 0.3f, -3.5f);
+
+            var component = zone.AddComponent<ReviveZone>();
+            component.radius = 6f;
+            component.label = "Checkpoint";
+            component.livingPlayersRevive = true;
+            component.respawn = respawn;
+            component.requiredItemId = itemId;
+            component.altarTop = spot;
+            component.beacon = AddGlow(position + Vector3.up * 3.5f, new Color(0.8f, 0.9f, 1f), 2f, 12f, zone.transform);
+
+            // The item itself, somewhere in the area, lying on the ground.
+            itemPosition.y = Height(itemPosition.x, itemPosition.z) + 0.14f;
+            var glow = itemId == "key" ? new Color(1f, 0.8f, 0.25f) : new Color(0.3f, 0.9f, 0.9f);
+            var item = ItemShape(itemId, itemPosition, 1f, glow, false);
+            item.name = "Item (" + itemId + ")";
+            var sphere = item.AddComponent<SphereCollider>();
+            sphere.radius = 0.8f;
+            item.AddComponent<QuestItem>().itemId = itemId;
+            var carry = item.AddComponent<Carryable>();
+            carry.radius = 0.3f;
+            carry.pickupRadius = 2.2f;
+            carry.carrySpeed = 0.95f;
+            carry.carryJump = 0.95f;
+            AddGlow(itemPosition + Vector3.up * 1f, glow, 2f, 7f, item.transform);
+        }
+
+        // The shapes of the quest items. Built lying flat, so they work both as carved marks on the altar and as the objects themselves.
+        static GameObject ItemShape(string id, Vector3 position, float scale, Color color, bool engraved)
+        {
+            var root = new GameObject(engraved ? "Carving (" + id + ")" : "Item Shape (" + id + ")");
+            root.transform.position = position;
+            float thick = engraved ? 0.03f : 0.12f;
+
+            if (id == "key")
+            {
+                Part(root, PrimitiveType.Cylinder, new Vector3(-0.6f, 0f, 0f), new Vector3(0.55f, thick * 0.5f, 0.55f), color, engraved);       // the ring
+                Part(root, PrimitiveType.Cube, new Vector3(0.1f, 0f, 0f), new Vector3(1.1f, thick, 0.16f), color, engraved);                      // the shaft
+                Part(root, PrimitiveType.Cube, new Vector3(0.5f, 0f, -0.17f), new Vector3(0.14f, thick, 0.3f), color, engraved);                  // teeth
+                Part(root, PrimitiveType.Cube, new Vector3(0.28f, 0f, -0.12f), new Vector3(0.14f, thick, 0.2f), color, engraved);
+            }
+            else
+            {
+                Part(root, PrimitiveType.Cylinder, Vector3.zero, new Vector3(0.9f, thick * 0.5f, 0.9f), color, engraved);                         // the cog
+                for (int i = 0; i < 8; i++)
+                {
+                    float a = i * Mathf.PI * 2f / 8f;
+                    var tooth = Part(root, PrimitiveType.Cube, new Vector3(Mathf.Cos(a) * 0.5f, 0f, Mathf.Sin(a) * 0.5f), new Vector3(0.22f, thick, 0.22f), color, engraved);
+                    tooth.transform.localRotation = Quaternion.Euler(0f, -a * Mathf.Rad2Deg, 0f);
+                }
+            }
+            root.transform.localScale = Vector3.one * scale;
+            return root;
+        }
+
+        static GameObject Part(GameObject root, PrimitiveType type, Vector3 localPosition, Vector3 localScale, Color color, bool engraved)
+        {
+            var go = GameObject.CreatePrimitive(type);
+            go.name = "Part";
+            go.transform.SetParent(root.transform, false);
+            go.transform.localPosition = localPosition;
+            go.transform.localScale = localScale;
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            if (engraved) GrayboxMaterials.Tint(go, color); else GrayboxMaterials.TintGlow(go, color, 1.3f);
+            return go;
         }
 
         // ------------------------------------------------------------------ mushrooms and lights
@@ -670,11 +729,11 @@ namespace Badeland.EditorTools
 
             var root = new GameObject("Mushrooms").transform;
             int placed = 0;
-            for (int tries = 0; tries < 400 && placed < 40; tries++)
+            for (int tries = 0; tries < 2000 && placed < 60; tries++)
             {
                 float x = Cx - Rx + (float)rng.NextDouble() * Rx * 2f;
                 float z = -Rz + (float)rng.NextDouble() * Rz * 2f;
-                if (!Inside(x, z, 3.5f)) continue;
+                if (!Inside(x, z, 2.5f) || !EdgeBias(rng, x, z)) continue;
                 if (Mathf.Abs(x + 16f) < 4f) continue; // not in the doorway of the gate
                 if (x > -39f && x < -33f && Mathf.Abs(z) < 5f) continue; // keep the wake-up spot clear
                 float h0 = Height(x, z);
@@ -689,8 +748,7 @@ namespace Badeland.EditorTools
                 float cap = 1.1f + (float)rng.NextDouble() * 1.8f;
 
                 var stem = S3SceneBuilder.Cyl("Mushroom Stem", new Vector3(x, h0 + height * 0.5f, z), new Vector3(0.25f, height * 0.5f, 0.25f), new Color(0.85f, 0.85f, 0.8f));
-                Object.DestroyImmediate(stem.GetComponent<Collider>());
-                stem.transform.SetParent(root, true);
+                stem.transform.SetParent(root, true); // the stem is solid
 
                 var top = S3SceneBuilder.Ball("Mushroom Cap", new Vector3(x, h0 + height, z), cap, glow, false);
                 top.transform.localScale = new Vector3(cap, cap * 0.55f, cap);

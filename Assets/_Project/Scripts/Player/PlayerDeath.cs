@@ -219,8 +219,6 @@ namespace Badeland.Player
             if (face.sqrMagnitude > 0.01f) visual.rotation = Quaternion.RotateTowards(visual.rotation, Quaternion.LookRotation(face), 360f * dt);
             transform.position = pos;
 
-            if (IsoCameraRig.Instance != null) IsoCameraRig.Instance.PrimaryTarget = target.transform;
-
             HudHints.Show("You are a ghost, following Player " + (target.NetworkId + 1) + ".  Jump: follow someone else.  A friend reaching a checkpoint brings you back.");
         }
 

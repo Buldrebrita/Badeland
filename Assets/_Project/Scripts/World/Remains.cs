@@ -58,13 +58,11 @@ namespace Badeland.World
             _timer += Time.deltaTime;
             if (_timer < 4f) return;
 
-            // Settled: freeze the pile, and let living players walk straight through it.
+            // Settled: freeze the pile where it lies.
             foreach (var body in _bodies)
             {
                 if (body == null) continue;
                 body.isKinematic = true;
-                var col = body.GetComponent<Collider>();
-                if (col != null) col.isTrigger = true;
             }
             enabled = false;
         }

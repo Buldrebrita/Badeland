@@ -21,6 +21,9 @@ namespace Badeland.World
 
         public bool IsHeld => _holder != null;
 
+        /// <summary>True once it has been put in its place for good (on an altar): it can no longer be picked up.</summary>
+        public bool Locked { get; set; }
+
         PlayerController _holder;
         Collider _collider;
         MovementModifiers _modifiers;
@@ -39,6 +42,8 @@ namespace Badeland.World
 
         void Update()
         {
+            if (Locked) return;
+
             if (_holder != null)
             {
                 transform.position = _holder.transform.position + Vector3.up * 1.7f;
