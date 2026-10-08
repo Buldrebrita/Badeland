@@ -53,6 +53,18 @@ namespace Badeland.Player
         /// <summary>True while something else (a water slide) is moving the player.</summary>
         public bool IsExternallyControlled { get; private set; }
 
+        /// <summary>
+        /// While true the player ignores the movement, jump and dive controls (reading a note, a cutscene). They still
+        /// stand on the ground and can still press Interact.
+        /// </summary>
+        public bool InputLocked { get; set; }
+
+        /// <summary>While true, nothing can hurt the player: no knocks, and the monster cannot eat them (except a forced eat).</summary>
+        public bool Invulnerable { get; set; }
+
+        Vector2 MoveInput => InputLocked ? Vector2.zero : _input.Move;
+        bool JumpPressedNow => !InputLocked && _input.JumpPressed;
+
         /// <summary>Fired once when this player is swallowed.</summary>
         public event Action Swallowed;
 
@@ -138,7 +150,7 @@ namespace Badeland.Player
         void UpdateSwimVertical(float dt)
         {
             // Hop out of the water: jump at the surface to leap onto the pool edge.
-            if (_input.JumpPressed && WaterDepth <= settings.floatDepth + 0.5f)
+            if (JumpPressedNow && WaterDepth <= settings.floatDepth + 0.5f)
             {
                 _verticalVelocity = settings.SurfaceHopVelocity;
                 _noSwimTimer = 0.35f; // do not re-enter the water on the way up
@@ -151,7 +163,7 @@ namespace Badeland.Player
 
             // Spring-damper towards the target depth: floating by default, deeper while diving.
             WaterVolume.TryFind(transform.position, out _, out float surfaceY);
-            float targetDepth = _input.DiveHeld ? settings.diveDepth : settings.floatDepth;
+            float targetDepth = (!InputLocked && _input.DiveHeld) ? settings.diveDepth : settings.floatDepth;
             float targetFeetY = surfaceY - targetDepth;
 
             float accel = settings.buoyancyStrength * (targetFeetY - FeetY())
@@ -164,7 +176,7 @@ namespace Badeland.Player
 
         void UpdateHorizontal(float dt, float maxSpeed, float acceleration, float deceleration, float control)
         {
-            Vector3 wish = CameraRelative(_input.Move);
+            Vector3 wish = CameraRelative(MoveInput);
 
             float speedMult = 1f;
             if (_modifiers != null)
@@ -195,7 +207,7 @@ namespace Badeland.Player
         {
             // Timers
             _coyoteTimer = IsGrounded ? settings.coyoteTime : _coyoteTimer - dt;
-            _jumpBufferTimer = _input.JumpPressed ? settings.jumpBufferTime : _jumpBufferTimer - dt;
+            _jumpBufferTimer = JumpPressedNow ? settings.jumpBufferTime : _jumpBufferTimer - dt;
 
             if (IsGrounded && _verticalVelocity < 0f)
             {
@@ -216,7 +228,7 @@ namespace Badeland.Player
             }
 
             // Variable height: letting go early cuts the rise short.
-            if (_jumping && !_input.JumpHeld && _verticalVelocity > settings.MinJumpVelocity)
+            if (_jumping && (InputLocked || !_input.JumpHeld) && _verticalVelocity > settings.MinJumpVelocity)
                 _verticalVelocity = settings.MinJumpVelocity;
 
             float g = settings.Gravity * (_verticalVelocity < 0f ? settings.fallGravityMultiplier : 1f);
@@ -240,14 +252,15 @@ namespace Badeland.Player
         }
 
         /// <summary>The direction the player's stick points, relative to the camera, on the ground plane.</summary>
-        public Vector3 WorldMoveDirection() => CameraRelative(_input.Move);
+        public Vector3 WorldMoveDirection() => CameraRelative(MoveInput);
 
         public bool InteractPressed => _input != null && _input.InteractPressed;
 
         /// <summary>The monster swallowed this player: hide them and switch their movement off.</summary>
-        public void Eat()
+        public void Eat(bool force = false)
         {
             if (IsEaten) return;
+            if (Invulnerable && !force) return;
             IsEaten = true;
             foreach (var r in GetComponentsInChildren<Renderer>()) r.enabled = false;
             if (_cc != null) _cc.enabled = false;
@@ -321,7 +334,7 @@ namespace Badeland.Player
         /// <summary>Hit by an obstacle: shoved sideways and up. Ignored for a moment after a hit so it cannot repeat every frame.</summary>
         public void Knock(Vector3 horizontalVelocity, float upwardVelocity)
         {
-            if (_knockTimer > 0f) return;
+            if (_knockTimer > 0f || Invulnerable) return;
             _knockTimer = 0.6f;
             horizontalVelocity.y = 0f;
             _horizontalVelocity = horizontalVelocity;

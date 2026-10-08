@@ -4,7 +4,7 @@
 
 A colourful, funny, 1 to 4 player co-op adventure for PC. It starts in a giant waterpark full of slides, inflatable obstacle courses, hidden traps and treasures. At the end, the lights go out, a sea monster rises from the water and swallows everyone. They wake up inside it, in a strange world with a mystery to solve.
 
-> Design: [docs/DESIGN.md](docs/DESIGN.md) · Tech: [docs/TECH.md](docs/TECH.md) · Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md) · First playable: [docs/VERTICAL_SLICE.md](docs/VERTICAL_SLICE.md)
+> Story and monster: [docs/STORY.md](docs/STORY.md) · Design: [docs/DESIGN.md](docs/DESIGN.md) · Tech: [docs/TECH.md](docs/TECH.md) · Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md) · First playable: [docs/VERTICAL_SLICE.md](docs/VERTICAL_SLICE.md)
 
 ## At a glance
 

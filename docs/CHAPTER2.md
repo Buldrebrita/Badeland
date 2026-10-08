@@ -37,29 +37,31 @@ The monster eats everyone, the screen fades to black ("To be continued..."), and
 - **The cavern:** fleshy walls, huge ribs overhead, glowing mushrooms in three colours, drifting jellyfish, fog.
 - **The breathing lake:** the water rises and falls about a metre every 10 seconds. A rotting dock leads into it.
 - **The bone gate puzzle:** the gate sinks while the plate in the north is held down. With friends, someone stands on it. Alone, you carry the heavy glowing stone onto it (press E to pick up and put down).
-- **The ruins:** stone gateways with a glowing spiral over every door. Lifebuoy, sign and flat inflatable from the waterpark lie on the ground.
-- **Four notes (press E to read):** a diary of an earlier group, "Marit" and the narrator. They tell, in pieces, that the walls breathe, that someone built here long ago, that the spiral is an eye or a mouth, and that the creature "is not hungry any more, it is listening".
-- **The great door** in the east wall. When everyone is at it, a message says this is the end of what is built.
+- **The shrine:** a circle of standing stones around an altar, forty-one folded robes with bowls, and three carvings that tell why people once came here willingly.
+- **Seven notes (press E to read, E to close, W/S or mouse wheel to scroll):** the diary of Marit and the narrator. While you read, your character stands still and nothing can hurt you.
+- **Compact and enclosed:** a living cavern with glowing veins, pulsing organs and an unbroken wall all around (you cannot fall out of the world). If you somehow fall, you are put back where you last stood.
+- **The great door** in the east wall. When everyone is at it, a message says it leads deeper, and that this is the end of what is built.
 
-## Story: what the notes already promise
+## Story (decided so far)
 
-The questions from DESIGN.md section 9, and what the first notes hint at (answers are still open, see below):
+The full direction is in [STORY.md](STORY.md). What this first area already tells, in pieces:
 
-- *What is this creature and how long has it existed?* The spiral carvings are very old.
-- *Who built these structures?* Someone else lived here, long before.
-- *Why does it eat people?* "It is not hungry any more. It is listening." Maybe it does not eat them to feed.
-- *Who else is here?* Marit and the narrator, who left notes. Where did they go?
-- *Is the monster the villain?* The title of the doubt: it is scary on the outside, but inside it *breathes with you*.
+- **The shrine of the Tide-Keepers.** Forty-one folded robes with offering bowls, a circle of standing stones, an altar, and three carvings. A very long time ago people came to the creature (the **Bearer**) *on purpose*, believing it came from a sacred place where the sea was born. They went to be kept, not eaten, so that the world it carries would not end.
+- **Marit and the narrator.** A diary in seven pages spread along the route. Marit loses her mind inside, wants out, and runs off into the lake. The narrator, alone, becomes lonely, talks to the mushrooms and sees Marit everywhere (faint figures that fade when you walk up to them), and finally believes the great door will let them walk out. It does not lead out. It leads deeper.
+- **Outside things.** A lifebuoy, a "Splash Zone!" sign and a flat pink inflatable lie in the sand. Others came in through the water, and from the waterpark.
 
-## Open decisions (yours)
+## Open decisions
 
-- [ ] **What is the creature, really?** Options: (a) a very old guardian that takes people in to protect them from something outside; (b) a dying creature that keeps its last visitors alive because it is lonely; (c) a creature that has been *listening for a voice* it lost, and the spiral is its name for it; (d) something else.
-- [ ] **Who built the stone village?** Another party that came in earlier, or people who lived here and are gone.
-- [ ] **What happened to Marit and the narrator?** Found later (alive? changed?), or never found.
-- [ ] **How does the waterpark connect to this?** Is the park a bait, a mouth, a memory the creature made?
-- [ ] **Tone of danger inside:** pure exploration and puzzles, or some real threat (the quiet, "it hears the river")?
-- [ ] **How Chapter 2 ends.**
+Decided by the project owner (see STORY.md): the creature is an ancient living world, not a villain; it consumes things to repair itself; many people have come before, some by choice; the waterpark is connected; there are three endings.
+
+Still open:
+
+- [ ] What is making the creature sick, and what is the ancient danger at the bottom of the sea (the secret ending)?
+- [ ] What happened to Marit: found later (changed? alive?), or never?
+- [ ] Who are the NPCs of the first living community, and what do they want?
+- [ ] How the stealth-like "do not be loud" idea works, if at all.
+- [ ] How Chapter 2 ends, and how the endings branch.
 
 ## What is not built yet
 
-Areas 2 to 6, any enemy or threat, the "do not be loud" mechanic, a current in the river, real art and audio (the heartbeat is a generated placeholder), and putting the carried stone over the network (it works on the machine of whoever carries it, so the plate puzzle online works with two players standing on it, but the stone does not yet).
+Areas 2 to 6, NPCs and dialogue, any threat inside, a current in the river, real art and audio (the heartbeat is a generated placeholder), and putting the carried stone over the network (it works on the machine of whoever carries it).

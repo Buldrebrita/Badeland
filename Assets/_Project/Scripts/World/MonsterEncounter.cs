@@ -571,7 +571,7 @@ namespace Badeland.World
                     if (!p.IsLocal || p.IsEaten) continue;
 
                     bool inJaws = a.final || (InCircle(p.transform.position, a.lockedPoint, a.radius) && p.FeetY() < a.lockedPoint.y + 4f);
-                    if (inJaws) p.Eat(); // swallowed
+                    if (inJaws) p.Eat(a.final); // swallowed (the very last lunge cannot be avoided)
                 }
 
                 var cam = IsoCameraRig.Instance;

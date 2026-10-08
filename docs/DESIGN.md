@@ -1,6 +1,6 @@
 # Badeland: Design Document
 
-**Status:** draft v0.2. Working title: BADELAND. Source: the project brief. Sibling docs: [TECH.md](TECH.md), [ROADMAP.md](ROADMAP.md), [VERTICAL_SLICE.md](VERTICAL_SLICE.md).
+**Status:** draft v0.2. **The story and the sea monster are described in [STORY.md](STORY.md), which takes priority over this document where they differ.** Working title: BADELAND. Source: the project brief. Sibling docs: [TECH.md](TECH.md), [ROADMAP.md](ROADMAP.md), [VERTICAL_SLICE.md](VERTICAL_SLICE.md).
 
 ## 1. Vision
 
