@@ -28,6 +28,67 @@ namespace Badeland.EditorTools
         /// <summary>Kept for old callers. (The slide's mesh is double-sided in the mesh itself.)</summary>
         public static void TintDoubleSided(GameObject go, Color color) => Apply(go, color, false, 0f);
 
+        /// <summary>
+        /// A material with a generated, tiling texture: mottled living flesh with veins (or, for the ground, a pitted
+        /// version). The mesh needs UV coordinates.
+        /// </summary>
+        public static void TintTextured(GameObject go, Color color, bool ground)
+        {
+            Directory.CreateDirectory(Folder);
+            string path = Folder + "/M_Badeland_" + (ground ? "CavernGround" : "CavernFlesh") + ".mat";
+            AssetDatabase.DeleteAsset(path);
+
+            Material mat = new Material(Template());
+            SetColor(mat, color);
+            string textureProperty = TextureProperty(mat);
+            if (textureProperty != null) mat.SetTexture(textureProperty, FleshTexture(ground));
+            if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 0.55f);
+            if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.55f);
+            if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 0f);
+            AssetDatabase.CreateAsset(mat, path);
+            go.GetComponent<Renderer>().sharedMaterial = mat;
+        }
+
+        static Texture2D FleshTexture(bool ground)
+        {
+            string folder = "Assets/_Project/Art/Textures";
+            string path = folder + (ground ? "/CavernGround.png" : "/CavernFlesh.png");
+            Directory.CreateDirectory(folder);
+
+            const int size = 256;
+            const float tau = Mathf.PI * 2f;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, true);
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float u = x / (float)size, v = y / (float)size;
+                    // Whole numbers of cycles, so the tile repeats without a seam.
+                    float mottle = Mathf.Sin(tau * (2f * u) + 1.3f * Mathf.Sin(tau * 3f * v))
+                                 + Mathf.Sin(tau * (3f * v) + 1.1f * Mathf.Sin(tau * 2f * u + 1f))
+                                 + Mathf.Sin(tau * (u + v) + 0.8f * Mathf.Sin(tau * 5f * u));
+                    float shade = Mathf.Lerp(0.6f, 1f, 0.5f + mottle / 6f);
+
+                    float veinA = Mathf.Abs(Mathf.Sin(tau * (3f * u + 0.5f * Mathf.Sin(tau * 2f * v))));
+                    float veinB = Mathf.Abs(Mathf.Sin(tau * (4f * v + 0.4f * Mathf.Sin(tau * 3f * u + 2f))));
+                    float vein = Mathf.Max(1f - Mathf.SmoothStep(0f, 0.09f, veinA), 1f - Mathf.SmoothStep(0f, 0.07f, veinB));
+
+                    float fine = Mathf.Sin(tau * 11f * u + 2f * Mathf.Sin(tau * 7f * v)) * Mathf.Sin(tau * 9f * v + 1f); // pits and pores
+                    float pits = ground ? Mathf.Clamp01(fine * 0.5f + 0.1f) : Mathf.Clamp01(fine * 0.3f);
+
+                    Color c = new Color(shade, shade, shade, 1f);
+                    c = Color.Lerp(c, new Color(0.55f, 0.2f, 0.28f), vein * (ground ? 0.35f : 0.6f));
+                    c = Color.Lerp(c, new Color(0.35f, 0.3f, 0.32f), pits * 0.5f);
+                    tex.SetPixel(x, y, c);
+                }
+            }
+            tex.Apply();
+            File.WriteAllBytes(path, tex.EncodeToPNG());
+            Object.DestroyImmediate(tex);
+            AssetDatabase.ImportAsset(path);
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
+
         /// <summary>A see-through blue for small bodies of water (the secret room's flood).</summary>
         public static void ApplyWater(GameObject go, Color tint) => TintWater(go, tint);
 
