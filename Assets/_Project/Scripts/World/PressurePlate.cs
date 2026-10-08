@@ -29,6 +29,8 @@ namespace Badeland.World
 
         void Update()
         {
+            if (_box == null) Awake();
+            if (_block == null) _block = new MaterialPropertyBlock();
             Bounds b = _box.bounds;
             bool pressed = false;
 
