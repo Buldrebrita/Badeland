@@ -474,7 +474,7 @@ namespace Badeland.EditorTools
         }
 
         // The same chest as on the waterpark course (built in CourseExtension), reused here.
-        static void CourseChest(string id, Vector3 position, float yaw) => CourseExtension.PlaceChest(id, position, yaw);
+        static void CourseChest(string id, Vector3 position, float yaw) => CourseScenery.PlaceChest(id, position, yaw);
 
         static void BuildRoom2Notes()
         {

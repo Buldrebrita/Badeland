@@ -21,99 +21,26 @@ namespace Badeland.EditorTools
             public GameObject sea;
             public Light sun;
             public Camera camera;
+            public InflatableCourse.Layout layout;
         }
-
-        // The big start/finish platform where the monster fight happens (the plaza south of the bottom straight).
-        // Includes the strip of bottom straight beside it, so the area players gather in is clearly inside.
-        static readonly Vector3 ArenaCenter = new Vector3(-11f, 0f, -22f);
-        static readonly Vector3 ArenaSize = new Vector3(34f, 1f, 24f);
 
         public static void Build(Context c)
         {
-            BuildFerry();
-            BuildWindmill();
-            BuildSlide();
-            BuildTrapAndRoom();
+            BuildTrapAndRoom(c.layout);
             BuildMonster(c);
-            BuildAlarmAndRailings();
+            BuildAlarmAndRailings(c.layout);
             ApplyLook(c);
         }
 
-        // ------------------------------------------------------------------ moving platform
+        // ------------------------------------------------------------------ the finale slide
 
-        static void BuildFerry()
-        {
-            // Crosses the gap in the bottom straight (x 9 to 17), carrying you from west to east.
-            var a = new Vector3(11.2f, 0f, -14f);
-            var b = new Vector3(14.8f, 0f, -14f);
-            var ferry = S3SceneBuilder.Box("Ferry", a, new Vector3(3.5f, 1.2f, 8f), new Color(1f, 0.55f, 0.1f));
-            var platform = ferry.AddComponent<MovingPlatform>();
-            platform.pointA = a;
-            platform.pointB = b;
-            platform.period = 7f;
-            S3SceneBuilder.Foam(ferry, new Vector3(4.9f, 0.04f, 9.4f));
-        }
-
-        // ------------------------------------------------------------------ windmill
-
-        static void BuildWindmill()
-        {
-            // A spinning cross standing across the right straight, between two bounce pads. It turns like a clock
-            // face, so you time your run past it or jump the low arm.
-            var hub = new GameObject("Windmill");
-            hub.transform.position = new Vector3(20f, 3.2f, 3f);
-
-            var armA = S3SceneBuilder.Box("Windmill Arm A", hub.transform.position, new Vector3(6.4f, 0.5f, 0.5f), new Color(0.95f, 0.3f, 0.35f));
-            var armB = S3SceneBuilder.Box("Windmill Arm B", hub.transform.position, new Vector3(0.5f, 6.4f, 0.5f), new Color(0.95f, 0.3f, 0.35f));
-            Object.DestroyImmediate(armA.GetComponent<Collider>());
-            Object.DestroyImmediate(armB.GetComponent<Collider>());
-            armA.transform.SetParent(hub.transform, true);
-            armB.transform.SetParent(hub.transform, true);
-
-            var cap = S3SceneBuilder.Cyl("Windmill Hub", hub.transform.position, new Vector3(1.2f, 0.4f, 1.2f), new Color(1f, 0.85f, 0.2f));
-            Object.DestroyImmediate(cap.GetComponent<Collider>());
-            cap.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-            cap.transform.SetParent(hub.transform, true);
-
-            var spin = hub.AddComponent<RotatingBar>();
-            spin.rotationAxis = Vector3.forward;
-            spin.degreesPerSecond = 50f;
-            spin.hitBoxes = new[] { armA.transform, armB.transform };
-        }
-
-        // ------------------------------------------------------------------ water slide
-
-        static void BuildSlide()
+        /// <summary>The water slide: a smooth track following the given points, with rails and support pillars.</summary>
+        public static void BuildSlideFromPath(Vector3[] path)
         {
             var orange = new Color(1f, 0.55f, 0.1f);
 
-            // A long, gentle ramp up to a tower in the top-west corner (3 m up over 9 m: easy to just run up).
-            const float rampX0 = -12f, rampX1 = -21f, rampY0 = 0.6f, rampY1 = 3.6f, rampZ = 16f, rampThickness = 1f;
-            float rampLength = Mathf.Sqrt((rampX0 - rampX1) * (rampX0 - rampX1) + (rampY1 - rampY0) * (rampY1 - rampY0));
-            float rampAngle = Mathf.Atan2(rampY1 - rampY0, rampX0 - rampX1) * Mathf.Rad2Deg;
-            Quaternion rampRotation = Quaternion.Euler(0f, 0f, -rampAngle); // rises towards the west
-            Vector3 surfaceMid = new Vector3((rampX0 + rampX1) * 0.5f, (rampY0 + rampY1) * 0.5f, rampZ);
-            var ramp = S3SceneBuilder.Box("Slide Ramp", surfaceMid - (rampRotation * Vector3.up) * (rampThickness * 0.5f),
-                new Vector3(rampLength, rampThickness, 4f), orange);
-            ramp.transform.rotation = rampRotation;
-
-            S3SceneBuilder.Box("Slide Tower", new Vector3(-22.5f, 1.8f, 16f), new Vector3(3f, 3.6f, 4f), new Color(1f, 0.4f, 0.7f));
-
             var root = new GameObject("Water Slide");
             var slide = root.AddComponent<WaterSlide>();
-
-            // Down the west side, swirling around the stepping discs, and out over the sea near the bottom deck.
-            Vector3[] path =
-            {
-                new Vector3(-22.5f, 4.1f, 15.0f),
-                new Vector3(-22.5f, 3.8f, 11.0f),
-                new Vector3(-22.5f, 3.2f, 5.0f),
-                new Vector3(-19.0f, 2.6f, 0.5f),
-                new Vector3(-22.0f, 2.0f, -4.0f),
-                new Vector3(-18.5f, 1.4f, -7.0f),
-                new Vector3(-15.0f, 0.9f, -7.8f),
-                new Vector3(-12.5f, 0.8f, -8.6f),
-            };
 
             var points = new Transform[path.Length];
             for (int i = 0; i < path.Length; i++)
@@ -228,10 +155,10 @@ namespace Badeland.EditorTools
 
         // ------------------------------------------------------------------ hidden trap and treasure room
 
-        static void BuildTrapAndRoom()
+        static void BuildTrapAndRoom(InflatableCourse.Layout layout)
         {
             // ---- The secret room, far off to the side of the park.
-            Vector3 rc = new Vector3(300f, 0f, 0f);
+            Vector3 rc = new Vector3(0f, 0f, 300f);
             var tile = new Color(0.85f, 0.8f, 0.95f);
             S3SceneBuilder.Box("Room Floor", rc + new Vector3(0f, -0.5f, 0f), new Vector3(16f, 1f, 16f), tile);
             S3SceneBuilder.Box("Room Wall West", rc + new Vector3(-8.5f, 3f, 0f), new Vector3(1f, 6f, 18f), new Color(0.45f, 0.35f, 0.7f));
@@ -251,7 +178,7 @@ namespace Badeland.EditorTools
             dropPoint.position = rc + new Vector3(0f, 7f, 0f);
 
             var returnPoint = new GameObject("Room Return Point").transform;
-            returnPoint.position = new Vector3(-14.5f, 1.8f, 12f);
+            returnPoint.position = layout.trapReturn;
 
             // The flood: a water box whose top starts just under the floor and rises once the treasure is taken.
             var flood = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -282,10 +209,10 @@ namespace Badeland.EditorTools
             room.roomSize = new Vector3(17f, 14f, 17f);
 
             // ---- The trap on the top straight: a trap door with a suspicious inflatable duck on it.
-            var panel = S3SceneBuilder.Box("Trap Door", new Vector3(-10f, 0f, 16f), new Vector3(4f, 1.2f, 4f), new Color(0.9f, 0.9f, 0.98f));
+            var panel = layout.trapPanel; // one of the round float pads on the course
 
             var duck = new GameObject("Suspicious Duck");
-            duck.transform.position = new Vector3(-10f, 0.6f, 16f);
+            duck.transform.position = panel.transform.position + new Vector3(1.2f, 0.6f, 0f);
             var body = S3SceneBuilder.Ball("Duck Body", duck.transform.position + new Vector3(0f, 0.8f, 0f), 1.6f, new Color(1f, 0.9f, 0.15f), false);
             var head = S3SceneBuilder.Ball("Duck Head", duck.transform.position + new Vector3(0f, 1.8f, 0.4f), 1f, new Color(1f, 0.9f, 0.15f), false);
             var beak = S3SceneBuilder.Box("Duck Beak", duck.transform.position + new Vector3(0f, 1.75f, 1f), new Vector3(0.5f, 0.2f, 0.5f), new Color(1f, 0.5f, 0.1f));
@@ -306,6 +233,8 @@ namespace Badeland.EditorTools
 
         static void BuildMonster(Context c)
         {
+            Vector3 A = c.layout.arenaCenter; // the finish platform: the monster rises from the water beside it
+
             // ---- Pieces used by the attacks (switched off until used).
             var telegraph = S3SceneBuilder.Cyl("Telegraph Template", new Vector3(0f, -50f, 0f), new Vector3(1f, 0.02f, 1f), Color.red);
             GrayboxMaterials.TintWater(telegraph, new Color(1f, 0.15f, 0.1f, 0.5f));
@@ -326,7 +255,7 @@ namespace Badeland.EditorTools
 
             // ---- The head. It faces its local +Z, and sits below the sea until the strike.
             var head = new GameObject("Monster Head");
-            head.transform.position = new Vector3(12f, -30f, -34f);
+            head.transform.position = A + new Vector3(-30f, -30f, 16f);
 
             Part(head.transform, PrimitiveType.Sphere, "Skull", new Vector3(0f, 0f, 0f), Vector3.one * 12f, skin);
             Part(head.transform, PrimitiveType.Sphere, "Brow", new Vector3(0f, 3.4f, 3.2f), new Vector3(9f, 2.2f, 5f), skin * 0.8f);
@@ -372,21 +301,21 @@ namespace Badeland.EditorTools
 
             // ---- The body: big humps that rise out of the sea with the head.
             var body = new GameObject("Monster Body");
-            body.transform.position = new Vector3(38f, -30f, -44f);
+            body.transform.position = A + new Vector3(-75f, -30f, 30f);
             Part(body.transform, PrimitiveType.Sphere, "Back", Vector3.zero, Vector3.one * 34f, teal);
             Part(body.transform, PrimitiveType.Sphere, "Hump", new Vector3(-14f, -3f, 13f), Vector3.one * 24f, teal * 0.9f);
             Part(body.transform, PrimitiveType.Sphere, "Hump", new Vector3(-12f, -5f, -15f), Vector3.one * 20f, teal * 0.8f);
 
             // ---- Positions: where the neck comes out of the sea, where the head hangs, where the tentacles come out.
             var neckBase = new GameObject("Neck Base").transform;
-            neckBase.position = new Vector3(30f, -3f, -38f);
+            neckBase.position = A + new Vector3(-42f, -3f, 14f);
             var lurk = new GameObject("Head Lurk Point").transform;
-            lurk.position = new Vector3(12f, 9f, -34f);
+            lurk.position = A + new Vector3(-20f, 9f, 18f);
 
             Vector3[] anchors =
             {
-                new Vector3(16f, -1f, -28f), new Vector3(16f, -1f, -42f), new Vector3(8f, -1f, -38f),
-                new Vector3(18f, -1f, -22f), new Vector3(14f, -1f, -48f),
+                A + new Vector3(-26f, -1f, 6f), A + new Vector3(-26f, -1f, -8f), A + new Vector3(-26f, -1f, -20f),
+                A + new Vector3(-8f, -1f, 22f), A + new Vector3(10f, -1f, 22f),
             };
             var bases = new Transform[anchors.Length];
             for (int i = 0; i < anchors.Length; i++)
@@ -399,8 +328,8 @@ namespace Badeland.EditorTools
             var encounterObject = new GameObject("Monster Encounter");
             var encounter = encounterObject.AddComponent<MonsterEncounter>();
             encounter.tracker = c.tracker;
-            encounter.platformCenter = ArenaCenter;
-            encounter.platformSize = ArenaSize;
+            encounter.platformCenter = A;
+            encounter.platformSize = new Vector3(c.layout.arenaSize.x, 1f, c.layout.arenaSize.z);
             encounter.platformTopY = 0.6f;
             encounter.celebrationSeconds = 3f;
             encounter.warningSeconds = 7f;
@@ -453,13 +382,15 @@ namespace Badeland.EditorTools
 
         // ------------------------------------------------------------------ the danger alarm: red lights and railings
 
-        static void BuildAlarmAndRailings()
+        static void BuildAlarmAndRailings(InflatableCourse.Layout layout)
         {
-            // ---- Red alarm beacons on poles around the big platform.
+            // ---- Red alarm beacons on poles around the finish platform.
+            Vector3 c0 = layout.arenaCenter;
+            float hx = layout.arenaSize.x * 0.5f - 1.5f, hz = layout.arenaSize.z * 0.5f - 1.5f;
             Vector3[] spots =
             {
-                new Vector3(-26.5f, 0f, -32.5f), new Vector3(4.5f, 0f, -32.5f), new Vector3(-26.5f, 0f, -19.5f),
-                new Vector3(4.5f, 0f, -19.5f), new Vector3(-11f, 0f, -33.2f), new Vector3(-11f, 0f, -11f),
+                c0 + new Vector3(-hx, 0f, -hz), c0 + new Vector3(hx, 0f, -hz), c0 + new Vector3(-hx, 0f, hz),
+                c0 + new Vector3(hx, 0f, hz), c0 + new Vector3(0f, 0f, -hz), c0 + new Vector3(0f, 0f, hz),
             };
 
             var alarmObject = new GameObject("Alarm Lights");
@@ -492,10 +423,10 @@ namespace Badeland.EditorTools
             alarm.beacons = beacons.ToArray();
 
             // ---- Railings around the platform. They are built standing, then lowered out of sight; the danger alarm raises them.
+            float ox = layout.arenaSize.x * 0.5f - 0.4f, oz = layout.arenaSize.z * 0.5f - 0.4f;
             Vector3[] outline =
             {
-                new Vector3(-28f, 0f, -34f), new Vector3(6f, 0f, -34f), new Vector3(6f, 0f, -18f), new Vector3(9f, 0f, -18f),
-                new Vector3(9f, 0f, -10f), new Vector3(-24f, 0f, -10f), new Vector3(-24f, 0f, -18f), new Vector3(-28f, 0f, -18f),
+                c0 + new Vector3(-ox, 0f, -oz), c0 + new Vector3(ox, 0f, -oz), c0 + new Vector3(ox, 0f, oz), c0 + new Vector3(-ox, 0f, oz),
             };
 
             var railRoot = new GameObject("Safety Railings");

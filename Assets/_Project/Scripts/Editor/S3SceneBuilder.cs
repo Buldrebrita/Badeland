@@ -42,6 +42,7 @@ namespace Badeland.EditorTools
             public FishSpecies[] species;
             public LapTracker tracker;
             public IsoCameraRig rig;
+            public InflatableCourse.Layout layout;
         }
 
         public static void Save(CourseResult result, string sceneName, string logFormat)
@@ -78,7 +79,7 @@ namespace Badeland.EditorTools
             var clown = Species("Clownfish", "Clownfish", new Color(1f, 0.5f, 0f), true,
                 new MovementModifier { speedMultiplier = 1f, jumpMultiplier = 1f, wobbleDegrees = 60f, wobbleHz = 1.2f });
 
-            // ---- Sea: a big translucent water volume (top face = surface at y 0) over a dark seabed.
+            // ---- Sea: a big water volume (top face = surface at y 0) over a seabed.
             var sea = GameObject.CreatePrimitive(PrimitiveType.Cube);
             sea.name = "Sea";
             sea.transform.position = new Vector3(0f, -4f, 0f);
@@ -89,128 +90,39 @@ namespace Badeland.EditorTools
             sea.AddComponent<WaterVolume>();
             Box("Seabed", new Vector3(0f, -8.5f, 0f), new Vector3(700f, 1f, 700f), new Color(0.1f, 0.45f, 0.9f));
 
-            // ---- The floating circuit (counter-clockwise, 8 m wide). Deck tops sit at y 0.6, 0.6 m above the sea.
-            // Bottom and top straights include the four corners. The left straight is a gap crossed on discs.
-            // The bottom straight has a gap (x 9 to 17) crossed on a moving ferry; the top straight has a hole in its
-            // far side (x -12 to -8, z 14 to 18) where the trap door sits.
-            Deck("Deck Bottom West (start)", new Vector3(-7.5f, 0f, -14f), new Vector3(33f, 1.2f, 8f));
-            Deck("Deck Bottom East", new Vector3(20.5f, 0f, -14f), new Vector3(7f, 1.2f, 8f));
-            // The big start/finish platform: a wide plaza south of the bottom straight. The laps start and end here,
-            // and the monster fight happens here too.
-            Deck("Start Plaza", new Vector3(-11f, 0f, -26f), new Vector3(34f, 1.2f, 16f));
-            Deck("Deck Top West", new Vector3(-18f, 0f, 14f), new Vector3(12f, 1.2f, 8f));
-            Deck("Deck Top Middle", new Vector3(-10f, 0f, 12f), new Vector3(4f, 1.2f, 4f));
-            Deck("Deck Top East", new Vector3(8f, 0f, 14f), new Vector3(32f, 1.2f, 8f));
-            Deck("Deck Right", new Vector3(20f, 0f, 0f), new Vector3(8f, 1.2f, 20f));
-            for (int i = 0; i < 3; i++)
-                Disc("Stepping Disc " + (i + 1), new Vector3(-20f, 0f, -6.6f + i * 6.6f), 4.5f);
-
-            // Orange borders (visual only) along the outer edge of each deck.
-            Trim("Trim Bottom Mid", new Vector3(7.5f, 0.62f, -17.8f), new Vector3(3f, 0.1f, 0.4f));
-            Trim("Trim Plaza South", new Vector3(-11f, 0.62f, -33.8f), new Vector3(34f, 0.1f, 0.4f));
-            Trim("Trim Plaza West", new Vector3(-27.8f, 0.62f, -26f), new Vector3(0.4f, 0.1f, 16f));
-            Trim("Trim Plaza East", new Vector3(5.8f, 0.62f, -26f), new Vector3(0.4f, 0.1f, 16f));
-            Trim("Trim Bottom East", new Vector3(20.5f, 0.62f, -17.8f), new Vector3(7f, 0.1f, 0.4f));
-            Trim("Trim Top West", new Vector3(-18f, 0.62f, 17.8f), new Vector3(12f, 0.1f, 0.4f));
-            Trim("Trim Top East", new Vector3(8f, 0.62f, 17.8f), new Vector3(32f, 0.1f, 0.4f));
-            Trim("Trim Right", new Vector3(23.8f, 0.62f, 0f), new Vector3(0.4f, 0.1f, 20f));
-
-            // Green inflatable bumper posts on the outer corners, and beach balls as soft obstacles.
-            foreach (var corner in new[]
-            {
-                new Vector2(22.4f, 16.4f), new Vector2(-22.4f, 16.4f), new Vector2(22.4f, -16.4f),
-                new Vector2(-26.6f, -32.6f), new Vector2(4.6f, -32.6f), new Vector2(-26.6f, -19.4f), new Vector2(4.6f, -19.4f),
-            })
-                Cyl("Bumper Post", new Vector3(corner.x, 1.6f, corner.y), new Vector3(1.6f, 1f, 1.6f), new Color(0.35f, 0.8f, 0.3f));
-            Ball("Beach Ball", new Vector3(-12f, 1.85f, -17f), 2.5f, new Color(1f, 0.3f, 0.3f), true);
-            Ball("Beach Ball", new Vector3(4f, 1.85f, -11f), 2.5f, new Color(1f, 0.9f, 0.2f), true);
-            Ball("Beach Ball", new Vector3(6f, 1.85f, 16.5f), 2.5f, new Color(0.3f, 0.5f, 1f), true);
-            Ball("Beach Ball", new Vector3(-22f, 1.85f, -30f), 2.4f, new Color(0.3f, 0.9f, 0.4f), true);
-            Ball("Beach Ball", new Vector3(-1f, 1.85f, -31f), 2.4f, new Color(1f, 0.5f, 0.15f), true);
-            Ball("Beach Ball (floating)", new Vector3(30f, 0.6f, 6f), 2.5f, new Color(1f, 0.4f, 0.8f), false).AddComponent<Bobber>();
-            Ball("Beach Ball (floating)", new Vector3(-30f, 0.6f, -12f), 2.5f, new Color(0.3f, 0.9f, 0.4f), false).AddComponent<Bobber>();
-
-            // Scenery: far-away decks you cannot reach, for the look of a big park.
-            Deck("Far Deck 1", new Vector3(55f, 0f, 20f), new Vector3(20f, 1.2f, 12f));
-            Deck("Far Deck 2", new Vector3(-55f, 0f, -25f), new Vector3(16f, 1.2f, 16f));
-            Deck("Far Deck 3", new Vector3(10f, 0f, 55f), new Vector3(24f, 1.2f, 10f));
-
-            // ---- Flag gates (the forward arrow shows the direction of travel).
-            var yellow = new Color(1f, 0.85f, 0.1f);
-            var cpRight = Gate("Checkpoint 1 (right)", new Vector3(20f, 0f, 0f), 0f, yellow);
-            var cpTop = Gate("Checkpoint 2 (top)", new Vector3(0f, 0f, 14f), -90f, yellow);
-            var cpLeft = Gate("Checkpoint 3 (left)", new Vector3(-20f, 0f, 0f), 180f, yellow);
-            var finish = Gate("Finish line", new Vector3(0f, 0f, -22f), 90f, new Color(0.2f, 0.9f, 0.3f), 24f);
-            CheckeredLine(new Vector3(0f, 0.61f, -22f), 24);
+            // ---- The obstacle course: one big inflatable course on the open water, 15 obstacles from start to finish.
+            var layout = InflatableCourse.Build(cod, salmon, clown);
 
             var trackerGo = new GameObject("LapTracker");
             var tracker = trackerGo.AddComponent<LapTracker>();
-            // The route: right straight, top straight, the long Northern Run (its own flag gates), the left straight, finish.
-            var order = new List<Checkpoint> { cpRight, cpTop };
-            order.AddRange(CourseExtension.Build());
-            order.Add(cpLeft);
-            order.Add(finish);
-            tracker.checkpoints = order.ToArray();
-            tracker.totalLaps = 3;
+            tracker.checkpoints = layout.gates;
+            tracker.totalLaps = 1;
 
-            // ---- Obstacles
-            // Right straight: three bounce pads in a row.
-            for (int i = 0; i < 3; i++)
-            {
-                var pad = Box("Bounce Pad " + (i + 1), new Vector3(20f, 0.7f, -6f + i * 6f), new Vector3(3f, 0.2f, 3f), Pink);
-                pad.GetComponent<BoxCollider>().isTrigger = true;
-                pad.AddComponent<BouncePad>();
-            }
+            // ---- The beach, the marina, the crowds and the town behind them.
+            CourseScenery.Build(layout);
 
-            // Top straight: a bar sweeping the whole width of the deck.
-            var bar = Box("Rotating Bar", new Vector3(0f, 1f, 14f), new Vector3(7f, 0.6f, 0.5f), new Color(1f, 0.85f, 0.2f));
-            Object.DestroyImmediate(bar.GetComponent<BoxCollider>());
-            bar.AddComponent<RotatingBar>();
+            // Nobody can wander off to the beach or the town: the play area is the water and the course.
+            var bounds = new GameObject("Play Area").AddComponent<RectBounds>();
+            bounds.minX = -layout.radius - 22f; bounds.maxX = layout.radius + 22f;
+            bounds.minZ = -28f; bounds.maxZ = layout.radius + 26f;
 
-            // ---- Jumping fish: random places and times. Each area leaps from open water towards the deck.
-            // Each leap starts in the sea outside a deck and lands back in the sea on the far side, so a fish
-            // never ends inside a deck. A narrow spread keeps it from landing on another deck.
-            FishArea("Fish Area Right", new[] { cod, salmon }, new Vector3(27f, 0.3f, 0f), new Vector3(1f, 0f, 10f), 270f, 15f, 12.5f, 15f, 11);
-            FishArea("Fish Area Top", new[] { salmon, clown, cod }, new Vector3(0f, 0.3f, 21f), new Vector3(16f, 0f, 1f), 180f, 15f, 12.5f, 15f, 22);
-            FishArea("Fish Area Left (gap)", new[] { clown, cod }, new Vector3(-27f, 0.3f, 0f), new Vector3(1f, 0f, 10f), 90f, 15f, 11f, 14f, 33);
-
-            // ---- Subtle per-lap changes near the start (see DESIGN.md 4b). Lap 1 is normal.
-            var towel = Box("Towel", new Vector3(-4f, 0.66f, -12f), new Vector3(1.6f, 0.1f, 0.9f), new Color(1f, 0.3f, 0.3f));
-            var sunglasses = Box("Sunglasses", new Vector3(-4f, 0.76f, -12f), new Vector3(0.5f, 0.1f, 0.2f), new Color(0.05f, 0.05f, 0.05f));
-            var chair = Box("Lifeguard Chair", new Vector3(5f, 1.5f, -16.5f), new Vector3(1f, 1.8f, 1f), new Color(0.95f, 0.95f, 0.95f));
-            var cone = Cyl("Cone", new Vector3(7f, 1.1f, -12f), new Vector3(0.6f, 0.5f, 0.6f), new Color(1f, 0.5f, 0.1f));
-            var sign = Box("Park Sign", new Vector3(-12f, 1.2f, -14.5f), new Vector3(4f, 1.2f, 0.2f), Color.white);
-            // Flat floor objects must not block the player.
-            foreach (var go in new[] { towel, sunglasses, cone }) Object.DestroyImmediate(go.GetComponent<Collider>());
-
-            var changesGo = new GameObject("LapChanges");
-            var changes = changesGo.AddComponent<LapChanges>();
-            changes.tracker = tracker;
-            changes.entries = new List<LapChange>
-            {
-                new LapChange { target = towel, showFromLap = 2 },
-                new LapChange { target = sunglasses, showFromLap = 3 },
-                new LapChange { target = chair, moveFromLap = 3, moveOffset = new Vector3(0.7f, 0f, 0f) },
-                new LapChange { target = cone, hideFromLap = 3 },
-                new LapChange { target = sign, tintFromLap = 3, tintColor = new Color(1f, 0.6f, 0.6f) },
-            };
-
-            // ---- Ferry, windmill, slide, hidden trap and secret room, the big platform and the monster, scenery, the look.
+            // ---- The trap and secret room, the monster and its alarm, and the look.
             CourseExtras.Build(new CourseExtras.Context
             {
                 tracker = tracker,
                 sea = sea,
                 sun = GameObject.Find("Directional Light") != null ? GameObject.Find("Directional Light").GetComponent<Light>() : null,
                 camera = Camera.main,
+                layout = layout,
             });
 
-            // ---- Player (starts at the bottom, facing the finish line). The online scene spawns its players instead.
+            // ---- Player (starts on the start platform). The online scene spawns its players instead.
             GameObject player = null;
             if (includePlayer)
             {
                 player = CreatePlayerObject(settings);
-                player.transform.position = new Vector3(-8f, 1.8f, -14f);
-                player.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+                player.transform.position = layout.startSpawn;
+                player.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
             }
 
             // ---- Camera rig
@@ -243,6 +155,7 @@ namespace Badeland.EditorTools
                 species = new[] { cod, salmon, clown },
                 tracker = tracker,
                 rig = rigComponent,
+                layout = layout,
             };
         }
 
@@ -289,7 +202,7 @@ namespace Badeland.EditorTools
             return species;
         }
 
-        static void FishArea(string name, FishSpecies[] pool, Vector3 zoneCenter, Vector3 zoneSize, float heading,
+        internal static void FishArea(string name, FishSpecies[] pool, Vector3 zoneCenter, Vector3 zoneSize, float heading,
             float spread, float minDistance, float maxDistance, int seed)
         {
             var root = new GameObject(name);

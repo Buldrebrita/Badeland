@@ -28,6 +28,12 @@ namespace Badeland.EditorTools
         /// <summary>Wood grain (docks, bridges, huts, ships).</summary>
         public static void TintWood(GameObject go, Color color) => Apply(go, color, false, 0f, "wood");
 
+        /// <summary>A building with rows of windows (the grid repeats every three metres up the wall).</summary>
+        public static void TintBuilding(GameObject go, Color color) => Apply(go, color, false, 0f, "building");
+
+        /// <summary>Sand: fine speckle.</summary>
+        public static void TintSand(GameObject go, Color color) => Apply(go, color, false, 0f, "sand");
+
         /// <summary>A colour that glows (bioluminescent plants, the monster's eyes). Strength 1 is a soft glow, 3 is bright.</summary>
         public static void TintGlow(GameObject go, Color color, float strength = 1.5f) => Apply(go, color, false, strength, null);
 
@@ -122,6 +128,18 @@ namespace Badeland.EditorTools
                                 value = 0.7f + 0.2f * rings - 0.3f * seam + 0.06f * (hash - 0.5f);
                                 break;
                             }
+                            case "building":
+                            {
+                                // A wall with two columns and two rows of windows per tile.
+                                float fu = Mathf.Repeat(u * 2f, 1f), fv = Mathf.Repeat(v * 2f, 1f);
+                                bool window = fu > 0.2f && fu < 0.8f && fv > 0.25f && fv < 0.75f;
+                                bool frame = fu > 0.15f && fu < 0.85f && fv > 0.2f && fv < 0.8f;
+                                value = window ? 0.3f + 0.1f * blotch : frame ? 0.55f : 0.93f - 0.05f * (hash - 0.5f);
+                                break;
+                            }
+                            case "sand":
+                                value = 0.9f + 0.06f * blotch + 0.12f * (hash - 0.5f);
+                                break;
                             default: // grain
                                 value = 0.84f + 0.1f * blotch + 0.08f * (hash - 0.5f);
                                 break;
@@ -228,13 +246,14 @@ namespace Badeland.EditorTools
             Directory.CreateDirectory(Folder);
 
             // Textured materials tile once per roughly three metres, so big and small objects have the same grain.
-            int tiling = 1;
+            int tiling = 1, tilingY = 1;
             if (textureKind != null)
             {
                 Vector3 s = go.transform.lossyScale;
-                tiling = Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(Mathf.Abs(s.x), Mathf.Abs(s.z)) / 3f), 1, 12);
+                tiling = Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(Mathf.Abs(s.x), Mathf.Abs(s.z)) / 3f), 1, textureKind == "sand" ? 60 : 12);
+                tilingY = textureKind == "building" ? Mathf.Clamp(Mathf.RoundToInt(Mathf.Abs(s.y) / 3f), 1, 40) : tiling;
             }
-            string kindTag = textureKind != null ? textureKind + tiling + "_" : "";
+            string kindTag = textureKind != null ? textureKind + tiling + "x" + tilingY + "_" : "";
             string path = Folder + "/M_Graybox_" + (transparent ? "Water_" : "") + (glow > 0f ? "Glow" + Mathf.RoundToInt(glow * 10f) + "_" : "") + kindTag + ColorUtility.ToHtmlStringRGBA(color) + ".mat";
 
             var renderer = go.GetComponent<Renderer>();
@@ -252,7 +271,7 @@ namespace Badeland.EditorTools
                 if (textureProperty != null)
                 {
                     mat.SetTexture(textureProperty, DetailTexture(textureKind));
-                    mat.SetTextureScale(textureProperty, new Vector2(tiling, tiling));
+                    mat.SetTextureScale(textureProperty, new Vector2(tiling, tilingY));
                 }
             }
             if (transparent) MakeTransparent(mat);

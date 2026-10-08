@@ -29,7 +29,9 @@ namespace Badeland.Networking.EditorTools
             var playerObject = S3SceneBuilder.CreatePlayerObject(course.settings);
             playerObject.name = "NetworkPlayer";
             playerObject.AddComponent<NetworkObject>();
-            playerObject.AddComponent<NetworkPlayer>();
+            var networkPlayer = playerObject.AddComponent<NetworkPlayer>();
+            networkPlayer.spawnOrigin = course.layout.startSpawn + new Vector3(-3.2f, 0f, 0f); // on the start platform, in a row
+            networkPlayer.spawnStep = new Vector3(2.1f, 0f, 0f);
             // The materials the scene will hand to every spawned player.
             Material bodyMaterial = playerObject.GetComponent<Renderer>().sharedMaterial;
             var noseTransform = playerObject.transform.Find("Nose");
