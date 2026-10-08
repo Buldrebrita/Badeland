@@ -39,7 +39,7 @@ namespace Badeland.EditorTools
             new Vector3(-10f, -14f, 3f), new Vector3(30f, -9f, 3f), new Vector3(30f, 9f, 2.5f),
         };
 
-        static readonly Color Flesh = new Color(0.42f, 0.17f, 0.2f);
+        static readonly Color Flesh = new Color(0.52f, 0.17f, 0.38f);
         static readonly Color Ground = new Color(0.46f, 0.27f, 0.28f);
         static readonly Color Stone = new Color(0.3f, 0.27f, 0.3f);
         static readonly Color Bone = new Color(0.82f, 0.78f, 0.66f);
@@ -75,6 +75,7 @@ namespace Badeland.EditorTools
             BuildWalls();
             BuildLivingWalls(rng, glowLights);
             BuildRibs();
+            BuildEye();
             var lake = BuildLake();
             BuildDock();
             BuildPools(glowLights);
@@ -211,10 +212,10 @@ namespace Badeland.EditorTools
 
             RenderSettings.skybox = null;
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.16f, 0.2f, 0.26f);
+            RenderSettings.ambientLight = new Color(0.22f, 0.22f, 0.36f);
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Exponential;
-            RenderSettings.fogColor = new Color(0.03f, 0.09f, 0.11f);
+            RenderSettings.fogColor = new Color(0.05f, 0.05f, 0.14f);
             RenderSettings.fogDensity = 0.009f;
         }
 
@@ -351,6 +352,29 @@ namespace Badeland.EditorTools
             }
         }
 
+        // A giant eye in the north wall that watches the party.
+        static void BuildEye()
+        {
+            float a = 1.45f;
+            Vector3 wall = WallPos(a, 7f);
+            Vector3 inward = new Vector3(Cx - wall.x, 0f, -wall.z).normalized;
+            var root = new GameObject("Giant Eye");
+            root.transform.position = wall + inward * 0.5f;
+            root.transform.rotation = Quaternion.LookRotation(inward);
+            root.transform.SetParent(SegmentAt(a), true);
+
+            var ball = S3SceneBuilder.Ball("Eyeball", root.transform.position, 7f, new Color(0.95f, 0.9f, 0.92f), false);
+            var iris = S3SceneBuilder.Ball("Iris", root.transform.position, 1f, new Color(0.2f, 0.5f, 0.95f), false);
+            var pupil = S3SceneBuilder.Ball("Pupil", root.transform.position, 1f, new Color(0.02f, 0.02f, 0.05f), false);
+            GrayboxMaterials.TintGlow(iris, new Color(0.2f, 0.5f, 0.95f), 0.6f);
+            foreach (var part in new[] { ball, iris, pupil }) part.transform.SetParent(root.transform, true);
+            iris.transform.localPosition = new Vector3(0f, 0f, 3.3f);
+            iris.transform.localScale = new Vector3(3.6f, 3.6f, 0.6f);
+            pupil.transform.localPosition = new Vector3(0f, 0f, 3.5f);
+            pupil.transform.localScale = new Vector3(1.6f, 1.6f, 0.6f);
+            root.AddComponent<EyeWatcher>();
+        }
+
         static void BuildRibs()
         {
             // Huge pale ribs arching over the cavern, far above the camera.
@@ -386,7 +410,7 @@ namespace Badeland.EditorTools
             water.name = "Lake";
             water.transform.position = new Vector3((minX + maxX) * 0.5f, -3.8f, 0f);
             water.transform.localScale = new Vector3(maxX - minX, 7f, halfZ * 2f);
-            GrayboxMaterials.TintWater(water, new Color(0.04f, 0.32f, 0.38f, 0.8f));
+            GrayboxMaterials.TintWater(water, new Color(0.06f, 0.4f, 0.75f, 0.8f));
             water.GetComponent<BoxCollider>().isTrigger = true;
             water.AddComponent<WaterVolume>();
             return water;

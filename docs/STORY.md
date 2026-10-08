@@ -123,3 +123,10 @@ compact area..."):
 - The Mirage figures (the narrator's hallucinations).
 
 Keep notes short and sparse, and introduce them gradually.
+
+## Visual reference (user's concept art, 9 panels)
+
+Purple/magenta fleshy cave walls with a giant watching eye; saturated blue water; glowing mushrooms; waterfalls; wooden
+bridges and docks; rock islands with water channels; stone puzzle plates; treasure chests; small lantern-lit huts (NPC
+villages); pipes and valves; a wrecked ship; inflatable waterpark pieces swallowed inside; a toothy jaw with tentacles;
+a glowing tree on an island. Cartoony, colourful, warm vs cool light. Use as the target for later areas.
