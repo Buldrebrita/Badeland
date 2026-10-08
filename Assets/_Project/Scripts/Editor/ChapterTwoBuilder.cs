@@ -73,6 +73,7 @@ namespace Badeland.EditorTools
                 AssetDatabase.CreateAsset(settings, settingsPath);
             }
 
+            GrayboxMaterials.ResetTexturedMaterials();
             var rng = new System.Random(2027);
             var glowLights = new List<Light>();
 

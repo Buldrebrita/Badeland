@@ -103,6 +103,12 @@ namespace Badeland.Player
             {
                 SetBodyVisible(true);
                 ApplyGhostLook();
+
+                // The ghost rises from where the body fell, and drifts to the nearest friend.
+                _followed = NearestAlive();
+                _ghostArrived = false;
+                if (_followed != null) SetGhostOffsetFrom(_followed); else _ghostOffset = Vector3.zero;
+                if (IsLocal && _cc != null) _cc.enabled = false; // ghosts glide through everything
             }
             // Otherwise nobody is left: stay hidden until DeathScreen restarts everyone.
         }
@@ -149,6 +155,7 @@ namespace Badeland.Player
             visual.rotation = _deathStartRotation;
             IsDead = false;
             _followed = null;
+            if (_cc != null) _cc.enabled = IsLocal; // a ghost had it switched off
             Teleport(position, yawDegrees);
             if (IsLocal && IsoCameraRig.Instance != null) IsoCameraRig.Instance.PrimaryTarget = transform;
             Resurrected?.Invoke();
@@ -164,39 +171,78 @@ namespace Badeland.Player
             if (_cc.isGrounded) _verticalVelocity = -2f;
         }
 
+        Vector3 _ghostOffset;
+        bool _ghostArrived;
+
+        // The ghost drifts to the nearest living player, then follows them. Moving the stick circles around them;
+        // jump picks someone else. It stays level with its friend: it does not float up.
         void UpdateGhost(float dt)
         {
             IsSwimming = false;
             WaterDepth = 0f;
-
-            var target = ResolveFollowed();
-            if (JumpPressedNow) CycleFollowed();
-
-            UpdateHorizontal(dt, settings.maxSpeed * 1.15f, settings.acceleration, settings.deceleration, 1f);
-
-            // Float a little above whatever is below (ground, bridge or the lake surface).
-            float ground = FeetY();
-            if (Physics.Raycast(transform.position + Vector3.up * 20f, Vector3.down, out var hit, 60f, ~0, QueryTriggerInteraction.Ignore))
-                ground = hit.point.y;
-            if (WaterVolume.TryFind(transform.position, out _, out float surfaceY)) ground = Mathf.Max(ground, surfaceY);
-
-            float targetFeet = ground + 1.4f + 0.2f * Mathf.Sin(Time.time * 2f);
-            _verticalVelocity = Mathf.Clamp((targetFeet - FeetY()) * 4f, -8f, 8f);
-            _cc.Move((_horizontalVelocity + Vector3.up * _verticalVelocity) * dt);
             IsGrounded = false;
 
-            if (target != null)
+            var target = ResolveFollowed();
+            if (JumpPressedNow)
             {
-                // A ghost can roam, but stays close to the friend it follows.
-                Vector3 away = target.transform.position - transform.position;
-                away.y = 0f;
-                const float leash = 9f;
-                if (away.magnitude > leash) _cc.Move(away.normalized * (away.magnitude - leash));
-                if (IsLocal && IsoCameraRig.Instance != null) IsoCameraRig.Instance.PrimaryTarget = target.transform;
+                CycleFollowed();
+                target = _followed;
+                if (target != null) { _ghostArrived = false; SetGhostOffsetFrom(target); }
+            }
+            if (target == null) return;
+
+            Vector3 tp = target.transform.position;
+
+            if (!_ghostArrived)
+            {
+                // Glide towards the friend until close.
+                Vector3 want = _ghostOffset.sqrMagnitude < 0.01f ? Vector3.back * 3f : _ghostOffset.normalized * 3f;
+                _ghostOffset = Vector3.MoveTowards(_ghostOffset, want, 9f * dt);
+                if ((_ghostOffset - want).sqrMagnitude < 0.01f) _ghostArrived = true;
             }
 
-            if (IsLocal)
-                HudHints.Show("You are a ghost" + (target != null ? ", following Player " + (target.NetworkId + 1) : "") + ".  Jump: follow someone else.  Reach a checkpoint with a friend to come back.");
+            Vector3 input = WorldMoveDirection();
+            if (input.sqrMagnitude > 0.01f)
+            {
+                _ghostArrived = true;
+                _ghostOffset += input * 7f * dt;
+                _ghostOffset.y = 0f;
+                if (_ghostOffset.magnitude > 7f) _ghostOffset = _ghostOffset.normalized * 7f;
+                if (_ghostOffset.magnitude < 1.5f) _ghostOffset = (_ghostOffset.sqrMagnitude < 0.01f ? Vector3.back : _ghostOffset.normalized) * 1.5f;
+            }
+
+            float bob = 0.12f * Mathf.Sin(Time.time * 2f);
+            float y = Mathf.Lerp(transform.position.y, tp.y + 0.25f + bob, 1f - Mathf.Exp(-6f * dt)); // level with the friend
+            Vector3 pos = new Vector3(tp.x + _ghostOffset.x, y, tp.z + _ghostOffset.z);
+
+            Vector3 face = tp - pos; face.y = 0f;
+            if (face.sqrMagnitude > 0.01f) visual.rotation = Quaternion.RotateTowards(visual.rotation, Quaternion.LookRotation(face), 360f * dt);
+            transform.position = pos;
+
+            if (IsoCameraRig.Instance != null) IsoCameraRig.Instance.PrimaryTarget = target.transform;
+
+            HudHints.Show("You are a ghost, following Player " + (target.NetworkId + 1) + ".  Jump: follow someone else.  A friend reaching a checkpoint brings you back.");
+        }
+
+        void SetGhostOffsetFrom(PlayerController target)
+        {
+            _ghostOffset = transform.position - target.transform.position;
+            _ghostOffset.y = 0f;
+        }
+
+        PlayerController NearestAlive()
+        {
+            PlayerController best = null;
+            float bestDist = float.MaxValue;
+            var players = AllPlayers;
+            for (int i = 0; i < players.Count; i++)
+            {
+                var p = players[i];
+                if (p == this || p.IsDead || p.IsEaten) continue;
+                float d = (p.transform.position - transform.position).sqrMagnitude;
+                if (d < bestDist) { bestDist = d; best = p; }
+            }
+            return best;
         }
 
         PlayerController ResolveFollowed()
@@ -258,6 +304,12 @@ namespace Badeland.Player
                 foreach (var m in _ghostMaterials[i]) if (m != null) Destroy(m);
             }
             _ghostRenderers = null;
+        }
+
+        /// <summary>Turn the character to face a direction (first person looks where the camera looks).</summary>
+        public void SetFacing(float yawDegrees)
+        {
+            if (visual != null) visual.rotation = Quaternion.Euler(0f, yawDegrees, 0f);
         }
 
         static Material MakeGhost(Material source)

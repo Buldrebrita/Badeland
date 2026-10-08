@@ -71,6 +71,12 @@ namespace Badeland.Player
         /// <summary>Fired when a swallowed player comes back (waking up inside the monster).</summary>
         public event Action Revived;
 
+        /// <summary>The way the character faces, in degrees.</summary>
+        public float FacingYaw => visual != null ? visual.eulerAngles.y : transform.eulerAngles.y;
+
+        /// <summary>How high the eyes are above the character's origin.</summary>
+        public float EyeHeight => _cc != null ? _cc.center.y + _cc.height * 0.5f - 0.15f : 1.6f;
+
         public bool IsGrounded { get; private set; }
         public bool IsSwimming { get; private set; }
         /// <summary>Metres of the body below the water surface (0 when not in water).</summary>

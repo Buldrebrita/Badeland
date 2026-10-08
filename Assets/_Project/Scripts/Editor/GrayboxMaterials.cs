@@ -36,6 +36,15 @@ namespace Badeland.EditorTools
         {
             Directory.CreateDirectory(Folder);
             string path = Folder + "/M_Badeland_" + (ground ? "CavernGround" : "CavernFlesh") + ".mat";
+
+            // Many objects share one material: make it once per build (deleting and remaking it for every wall piece
+            // left the earlier pieces pointing at a deleted material, which shows as magenta).
+            var cached = ground ? _cavernGround : _cavernFlesh;
+            if (cached != null && AssetDatabase.Contains(cached))
+            {
+                go.GetComponent<Renderer>().sharedMaterial = cached;
+                return;
+            }
             AssetDatabase.DeleteAsset(path);
 
             Material mat = new Material(Template());
@@ -46,8 +55,14 @@ namespace Badeland.EditorTools
             if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.55f);
             if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 0f);
             AssetDatabase.CreateAsset(mat, path);
+            if (ground) _cavernGround = mat; else _cavernFlesh = mat;
             go.GetComponent<Renderer>().sharedMaterial = mat;
         }
+
+        static Material _cavernGround, _cavernFlesh;
+
+        /// <summary>Forget the shared cavern materials, so the next build makes fresh ones.</summary>
+        public static void ResetTexturedMaterials() { _cavernGround = null; _cavernFlesh = null; }
 
         static Texture2D FleshTexture(bool ground)
         {
