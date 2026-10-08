@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &4383996472945424489
+--- !u!1 &4406260689801288343
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,9 +8,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 3922043845432021592}
-  - component: {fileID: 8936376767669515723}
-  - component: {fileID: 7420481976277630687}
+  - component: {fileID: 6384862510435060268}
+  - component: {fileID: 9145872427213393132}
+  - component: {fileID: 410756923758384654}
   m_Layer: 0
   m_Name: Nose
   m_TagString: Untagged
@@ -18,36 +18,36 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &3922043845432021592
+--- !u!4 &6384862510435060268
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4383996472945424489}
+  m_GameObject: {fileID: 4406260689801288343}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0.5, z: 0.45}
   m_LocalScale: {x: 0.3, y: 0.3, z: 0.3}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 2888106814412262565}
+  m_Father: {fileID: 7236126071225145411}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &8936376767669515723
+--- !u!33 &9145872427213393132
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4383996472945424489}
+  m_GameObject: {fileID: 4406260689801288343}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!23 &7420481976277630687
+--- !u!23 &410756923758384654
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4383996472945424489}
+  m_GameObject: {fileID: 4406260689801288343}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -90,7 +90,7 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!1 &6793791198711671519
+--- !u!1 &6108177800086943234
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -98,14 +98,14 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2888106814412262565}
-  - component: {fileID: 1697945418288264419}
-  - component: {fileID: 3306846385039146745}
-  - component: {fileID: 6813195771879233450}
-  - component: {fileID: 7448869707467093164}
-  - component: {fileID: 5705119933932193106}
-  - component: {fileID: 5575033891167496666}
-  - component: {fileID: 8001057336242836007}
+  - component: {fileID: 7236126071225145411}
+  - component: {fileID: 5313977536398773945}
+  - component: {fileID: 1312307496711786994}
+  - component: {fileID: 1210100439035524822}
+  - component: {fileID: 4310647367677145464}
+  - component: {fileID: 7440795274007736024}
+  - component: {fileID: 6462423482602314775}
+  - component: {fileID: 8864213677913859830}
   m_Layer: 0
   m_Name: OfflinePlayer
   m_TagString: Untagged
@@ -113,37 +113,37 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &2888106814412262565
+--- !u!4 &7236126071225145411
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6793791198711671519}
+  m_GameObject: {fileID: 6108177800086943234}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 3922043845432021592}
+  - {fileID: 6384862510435060268}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &1697945418288264419
+--- !u!33 &5313977536398773945
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6793791198711671519}
+  m_GameObject: {fileID: 6108177800086943234}
   m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
---- !u!23 &3306846385039146745
+--- !u!23 &1312307496711786994
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6793791198711671519}
+  m_GameObject: {fileID: 6108177800086943234}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -186,25 +186,25 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &6813195771879233450
+--- !u!114 &1210100439035524822
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6793791198711671519}
+  m_GameObject: {fileID: 6108177800086943234}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ae6f2a6c909968f4bb1fe4f5b0a717a7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Badeland.Runtime::Badeland.Player.MovementModifiers
---- !u!143 &7448869707467093164
+--- !u!143 &4310647367677145464
 CharacterController:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6793791198711671519}
+  m_GameObject: {fileID: 6108177800086943234}
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -223,25 +223,25 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &5705119933932193106
+--- !u!114 &7440795274007736024
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6793791198711671519}
+  m_GameObject: {fileID: 6108177800086943234}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f59950e2df541394791532d629958d40, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Badeland.Runtime::Badeland.Player.PlayerInputReader
---- !u!114 &5575033891167496666
+--- !u!114 &6462423482602314775
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6793791198711671519}
+  m_GameObject: {fileID: 6108177800086943234}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 30ce85f0be863b541a061353df33d1d8, type: 3}
@@ -249,14 +249,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Badeland.Runtime::Badeland.Player.PlayerController
   settings: {fileID: 11400000, guid: 6e228517d6cd02043b18b8307bedb938, type: 2}
   cameraTransform: {fileID: 0}
-  visual: {fileID: 2888106814412262565}
---- !u!114 &8001057336242836007
+  visual: {fileID: 7236126071225145411}
+--- !u!114 &8864213677913859830
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6793791198711671519}
+  m_GameObject: {fileID: 6108177800086943234}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 30045dd335bc15a4dad33ea3a3b6d16d, type: 3}
