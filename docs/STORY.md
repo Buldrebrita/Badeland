@@ -111,3 +111,15 @@ The goal: the player finishes the first major section thinking *"I thought I was
 3. Give the monster a more original body (whale-like body, long tail, expressive face) and a calm "sleeping" moment under the waterpark.
 4. Build area 2 of Chapter 2 and the first lost NPC community (see CHAPTER2.md).
 5. Write the middle of the story so that "the monster may be sick" becomes visible in the world: parts of the interior that are dying, and a first sign of *what* is making it sick.
+
+## Moved out of the first area (reserved for later in Chapter 2)
+
+The user wanted the first area to say only: "you were swallowed, and there are dangerous things here". These pieces were
+cut from `ChapterTwoBuilder` and belong in LATER areas (the old code is in git history, commit "Chapter 2 feedback: enclosed
+compact area..."):
+
+- The shrine of the Tide-Keepers (standing stones, 41 folded robes with offering bowls, three carved tablets: the Bearer, the sacred place, the willing sacrifice).
+- Marit and the narrator's diary (days 1 to ??): Marit goes insane, wants out, runs off; the narrator gets lonely, sees things, believes they can leave.
+- The Mirage figures (the narrator's hallucinations).
+
+Keep notes short and sparse, and introduce them gradually.
