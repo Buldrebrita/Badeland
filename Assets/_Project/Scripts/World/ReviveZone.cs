@@ -4,9 +4,9 @@ using UnityEngine;
 namespace Badeland.World
 {
     /// <summary>
-    /// A place where the dead come back: the start of an area, or a checkpoint. A ghost that floats into the zone is
-    /// revived there. At a checkpoint, a living player reaching it also revives every ghost in the party (so friends
-    /// can bring each other back by making progress). At the start, only a ghost that makes its way back revives.
+    /// The start of an area, or a checkpoint. A living player reaching a checkpoint revives every ghost in the party
+    /// (friends bring each other back by making progress), and the latest one reached is where everyone restarts after
+    /// a total wipe.
     /// </summary>
     public class ReviveZone : MonoBehaviour
     {
@@ -18,9 +18,17 @@ namespace Badeland.World
         public string label = "Checkpoint";
         public Light beacon;
 
+        /// <summary>Where everyone restarts after a total wipe: the latest checkpoint reached, or the start of the area.</summary>
+        public static ReviveZone Last { get; private set; }
+
         public bool Activated { get; private set; }
         float _bannerTimer;
         float _beaconBase;
+
+        void Awake()
+        {
+            if (!livingPlayersRevive) Last = this; // the start of the area, until a checkpoint is reached
+        }
 
         void Start()
         {
@@ -51,6 +59,7 @@ namespace Badeland.World
             if (livingPlayersRevive && livingInside && !Activated)
             {
                 Activated = true;
+                Last = this;
                 if (localLivingInside) _bannerTimer = 3f;
             }
 
@@ -66,7 +75,7 @@ namespace Badeland.World
             {
                 var g = players[i];
                 if (!g.IsLocal || !g.IsDead) continue; // each machine revives its own ghost
-                if (!(Inside(g) || (livingPlayersRevive && livingInside))) continue;
+                if (!(livingPlayersRevive && livingInside)) continue; // friends bring ghosts back by reaching a checkpoint
 
                 float angle = Mathf.Abs(g.NetworkId) * 1.7f;
                 Vector3 spot = respawn.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 1.6f;

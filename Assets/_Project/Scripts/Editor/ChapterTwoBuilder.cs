@@ -45,7 +45,7 @@ namespace Badeland.EditorTools
         };
         const float PlateX = -28f, PlateZ = 11f, StoneX = -31f, StoneZ = -10f;
 
-        static readonly Color Flesh = new Color(1f, 0.5f, 0.75f);
+        static readonly Color Flesh = new Color(0.9f, 0.5f, 0.42f);
         static readonly Color Ground = new Color(0.8f, 0.55f, 0.6f);
         static readonly Color Stone = new Color(0.3f, 0.27f, 0.3f);
         static readonly Color Bone = new Color(0.82f, 0.78f, 0.66f);

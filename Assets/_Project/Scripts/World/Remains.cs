@@ -13,7 +13,7 @@ namespace Badeland.World
         readonly List<Rigidbody> _bodies = new List<Rigidbody>();
         float _timer;
 
-        public static void Spawn(Vector3 feet, Quaternion facing, Color clothColor, Collider ignore)
+        public static void Spawn(Vector3 feet, Quaternion facing, Color clothColor, Collider ignore, bool withClothes = true)
         {
             var root = new GameObject("Remains");
             root.transform.position = feet;
@@ -30,7 +30,7 @@ namespace Badeland.World
                 remains.Piece(PrimitiveType.Capsule, feet + facing * new Vector3(side * 0.35f, 1.1f, 0f), new Vector3(0.09f, 0.35f, 0.09f), bone, ignore, facing); // arm
                 remains.Piece(PrimitiveType.Capsule, feet + facing * new Vector3(side * 0.15f, 0.4f, 0f), new Vector3(0.11f, 0.42f, 0.11f), bone, ignore, facing); // leg
             }
-            remains.Piece(PrimitiveType.Cube, feet + Vector3.up * 0.9f, new Vector3(0.75f, 0.08f, 0.55f), clothColor, ignore, facing); // the clothes, for now a folded cloth
+            if (withClothes) remains.Piece(PrimitiveType.Cube, feet + Vector3.up * 0.9f, new Vector3(0.75f, 0.08f, 0.55f), clothColor, ignore, facing); // the clothes, for now a folded cloth
         }
 
         void Piece(PrimitiveType type, Vector3 position, Vector3 scale, Color color, Collider ignore, Quaternion rotation)

@@ -97,7 +97,11 @@ namespace Badeland.Player
         {
             if (settings == null || IsEaten || IsExternallyControlled) return;
             float dt = Time.deltaTime;
-            if (IsDead) { UpdateGhost(dt); return; }
+            if (IsDead)
+            {
+                if (IsDying) UpdateDying(dt); else UpdateGhost(dt);
+                return;
+            }
             _knockTimer -= dt;
 
             UpdateWaterState(dt);
@@ -266,6 +270,7 @@ namespace Badeland.Player
             {
                 if (!force) return;
                 ClearGhostLook();
+                IsDying = false;
                 IsDead = false;
             }
             IsEaten = true;
