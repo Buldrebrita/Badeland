@@ -65,3 +65,11 @@ Still open:
 ## What is not built yet
 
 Areas 2 to 6, NPCs and dialogue, any threat inside, a current in the river, real art and audio (the heartbeat is a generated placeholder), and putting the carried stone over the network (it works on the machine of whoever carries it).
+
+## Room 2: The Sunken Harbour (first draft)
+
+Menu: `Badeland > Create Chapter 2 - Room 2 (The Sunken Harbour)`. Room 1's great door leads here.
+A bigger cavern with a lagoon, a wrecked ship (gangplank, deck, button B), an empty lantern village on a terrace
+(button A, heavy stone, the shell that wakes the first checkpoint), a waterfall with a plunge pool, acid pools, and a
+stone gate that opens only while both buttons are held. Three hidden chests. One narrator note. The second checkpoint
+(beyond the gate) is already awake. Shared cavern code lives in `ChapterTwoBuilder` (room 2 is a partial of it).
