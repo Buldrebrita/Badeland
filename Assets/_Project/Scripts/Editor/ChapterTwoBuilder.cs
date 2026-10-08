@@ -18,16 +18,21 @@ namespace Badeland.EditorTools
     /// and a great door at the far side. Only two short notes: the party just has to realise they were swallowed.
     /// Menu: Badeland > Create Chapter 2 - Inside the Monster (first area). See docs/CHAPTER2.md and docs/STORY.md.
     /// </summary>
-    public static class ChapterTwoBuilder
+    public static partial class ChapterTwoBuilder
     {
         public const string SceneName = "Inside_01_WakingShore";
         const string SceneFolder = "Assets/_Project/Scenes/Levels";
         const string SettingsFolder = "Assets/_Project/Settings";
         const string PrefabFolder = "Assets/_Project/Prefabs/Characters";
-        const string MeshFolder = "Assets/_Project/Art/Environment/Inside";
+        static string MeshFolder = "Assets/_Project/Art/Environment/Inside";
 
         // The cavern is an uneven oval: centre x = Cx, half-widths Rx and Rz, with a wobbly outline.
-        const float Cx = -1f, Rx = 40f, Rz = 24f;
+        internal static float Cx = -1f, Rx = 40f, Rz = 24f;
+
+        // What the current room does differently (set by each room's Build): its ground, and the places plants must avoid.
+        static Vector3[] Pools, FlatSpots;
+        static System.Func<float, float, float> HeightFn;
+        static System.Func<float, float, bool> ReservedFn;
         const int WallSegments = 128;
         // The walls rise to 15.5 m, then curve inward into the roof, which closes at 22 m.
         const float WallTop = 15.5f, RoofTop = 22f;
@@ -35,13 +40,13 @@ namespace Badeland.EditorTools
 
         // The lake basin (where the ground dips below the water), and the pools of digestive fluid.
         const float LakeMinX = 9f, LakeMaxX = 19f, LakeHalfZ = 4f, LakeBlend = 9f, LakeDepth = -4f;
-        static readonly Vector3[] Pools =
+        static readonly Vector3[] Room1Pools =
         {
             new Vector3(-24f, 3f, 2.8f), new Vector3(-22f, -10f, 2.2f), new Vector3(-10f, 14f, 3f),
             new Vector3(-10f, -14f, 3f), new Vector3(30f, -9f, 3f), new Vector3(30f, 9f, 2.5f),
         };
 
-        static readonly Vector3[] FlatSpots =
+        static readonly Vector3[] Room1FlatSpots =
         {
             new Vector3(-35f, 0f, 5f), new Vector3(PlateX, PlateZ, 4.5f), new Vector3(StoneX, StoneZ, 2.5f),
         };
@@ -62,6 +67,7 @@ namespace Badeland.EditorTools
             Directory.CreateDirectory(SceneFolder);
             Directory.CreateDirectory(SettingsFolder);
             Directory.CreateDirectory(PrefabFolder);
+            MeshFolder = "Assets/_Project/Art/Environment/Inside";
             if (Directory.Exists(MeshFolder)) AssetDatabase.DeleteAsset(MeshFolder);
             Directory.CreateDirectory(MeshFolder);
 
@@ -75,6 +81,13 @@ namespace Badeland.EditorTools
                 AssetDatabase.CreateAsset(settings, settingsPath);
             }
 
+            MeshFolder = "Assets/_Project/Art/Environment/Inside";
+            GrayboxMaterials.CavernSuffix = "";
+            Cx = -1f; Rx = 40f; Rz = 24f;
+            HeightFn = Room1Height;
+            ReservedFn = Room1Reserved;
+            Pools = Room1Pools;
+            FlatSpots = Room1FlatSpots;
             GrayboxMaterials.ResetTexturedMaterials();
             var rng = new System.Random(2027);
             var glowLights = new List<Light>();
@@ -197,7 +210,26 @@ namespace Badeland.EditorTools
         }
 
         // The height of the ground: gentle hills and hollows, a deep basin for the lake, small dips for the pools.
-        static float Height(float x, float z)
+        static float Height(float x, float z) => HeightFn != null ? HeightFn(x, z) : Room1Height(x, z);
+
+        static bool Room1Reserved(float x, float z)
+        {
+            if (Mathf.Abs(x + 16f) < 5f) return true;                      // the gate
+            if (x > 0f && x < 29f && Mathf.Abs(z) < 3f) return true;       // the bridge
+            if (x > -39f && x < -33f && Mathf.Abs(z) < 5f) return true;    // the wake-up spot
+            return NearPoolOrFlat(x, z);
+        }
+
+        static bool NearPoolOrFlat(float x, float z)
+        {
+            foreach (var pool in Pools)
+                if ((x - pool.x) * (x - pool.x) + (z - pool.y) * (z - pool.y) < (pool.z + 2f) * (pool.z + 2f)) return true;
+            foreach (var flat in FlatSpots)
+                if ((x - flat.x) * (x - flat.x) + (z - flat.y) * (z - flat.y) < (flat.z + 2f) * (flat.z + 2f)) return true;
+            return false;
+        }
+
+        static float Room1Height(float x, float z)
         {
             float h = 0.55f * Mathf.Sin(x * 0.23f + 1f) * Mathf.Cos(z * 0.19f)
                     + 0.35f * Mathf.Sin(x * 0.11f - z * 0.14f + 2f)
@@ -267,8 +299,9 @@ namespace Badeland.EditorTools
         static void BuildGround()
         {
             // One uneven mesh for the whole floor (shore, lake bed and far bank), cut off just outside the walls.
-            const float x0 = -46f, z0 = -30f, cell = 1.5f;
-            const int nx = 62, nz = 41;
+            const float cell = 1.5f;
+            float x0 = Cx - Rx - 6f, z0 = -Rz - 6f;
+            int nx = Mathf.CeilToInt((Rx * 2f + 12f) / cell) + 1, nz = Mathf.CeilToInt((Rz * 2f + 12f) / cell) + 1;
 
             var vertices = new Vector3[nx * nz];
             var uvs = new Vector2[nx * nz];
@@ -448,6 +481,7 @@ namespace Badeland.EditorTools
             {
                 float x = 3f + i;
                 var plank = S3SceneBuilder.Box("Plank", new Vector3(x, 0.05f, 0f), new Vector3(0.9f, 0.3f, 3.6f), wood * (0.85f + 0.15f * Mathf.Sin(i * 2.3f)));
+                GrayboxMaterials.TintWood(plank, wood * (0.85f + 0.15f * Mathf.Sin(i * 2.3f)));
                 plank.transform.rotation = Quaternion.Euler(0f, Mathf.Sin(i * 1.7f) * 2f, 0f);
                 plank.transform.SetParent(root, true);
 
@@ -487,13 +521,8 @@ namespace Badeland.EditorTools
         static bool FreeSpot(float x, float z, float margin)
         {
             if (!Inside(x, z, margin)) return false;
-            if (Mathf.Abs(x + 16f) < 5f) return false;                 // the gate
-            if (x > 0f && x < 29f && Mathf.Abs(z) < 3f) return false;  // the bridge
-            if (Height(x, z) < 0.1f) return false;                     // the lake basin
-            foreach (var pool in Pools)
-                if ((x - pool.x) * (x - pool.x) + (z - pool.y) * (z - pool.y) < (pool.z + 2f) * (pool.z + 2f)) return false;
-            foreach (var flat in FlatSpots)
-                if ((x - flat.x) * (x - flat.x) + (z - flat.y) * (z - flat.y) < (flat.z + 2f) * (flat.z + 2f)) return false;
+            if (ReservedFn != null && ReservedFn(x, z)) return false;
+            if (Height(x, z) < 0.1f) return false; // water basins
             return true;
         }
 
@@ -510,7 +539,9 @@ namespace Badeland.EditorTools
                 {
                     float size = 0.9f + (float)rng.NextDouble() * 2.2f;
                     var pos = new Vector3(x + (float)rng.NextDouble() * 2f - 1f, Height(x, z) + size * 0.15f, z + (float)rng.NextDouble() * 2f - 1f);
-                    var rock = S3SceneBuilder.Ball("Rock", pos, size, new Color(0.3f, 0.24f, 0.34f) * (0.8f + (float)rng.NextDouble() * 0.5f), true);
+                    var rockColor = new Color(0.3f, 0.24f, 0.34f) * (0.8f + (float)rng.NextDouble() * 0.5f);
+                    var rock = S3SceneBuilder.Ball("Rock", pos, size, rockColor, true);
+                    GrayboxMaterials.TintStone(rock, rockColor);
                     rock.transform.localScale = new Vector3(size, size * (0.5f + (float)rng.NextDouble() * 0.4f), size * (0.8f + (float)rng.NextDouble() * 0.4f));
                     rock.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
                     rock.transform.SetParent(rocks, true);
@@ -584,8 +615,8 @@ namespace Badeland.EditorTools
         static void BuildGateAndPuzzle()
         {
             // A wall across the cavern with a gap, closed by a bone gate that sinks into the ground while the plate is held.
-            S3SceneBuilder.Box("Choke Wall North", new Vector3(-16f, 1.5f, 14.8f), new Vector3(3f, 7f, 15.6f), Stone);
-            S3SceneBuilder.Box("Choke Wall South", new Vector3(-16f, 1.5f, -14.8f), new Vector3(3f, 7f, 15.6f), Stone);
+            GrayboxMaterials.TintStone(S3SceneBuilder.Box("Choke Wall North", new Vector3(-16f, 1.5f, 14.8f), new Vector3(3f, 7f, 15.6f), Stone), Stone);
+            GrayboxMaterials.TintStone(S3SceneBuilder.Box("Choke Wall South", new Vector3(-16f, 1.5f, -14.8f), new Vector3(3f, 7f, 15.6f), Stone), Stone);
 
             // The plate sits on a level patch of ground (see FlatSpots), a plain stone button just proud of the floor.
             float plateTop = Height(PlateX, PlateZ) + 0.3f;
@@ -638,12 +669,18 @@ namespace Badeland.EditorTools
             zone.transform.position = position + Vector3.up * 0.05f;
 
             // A grey stone altar, with the carving of the item on top.
-            S3SceneBuilder.Box("Altar Base", position + Vector3.up * 0.2f, new Vector3(2.6f, 1.6f, 2.6f), stoneGrey * 0.85f).transform.SetParent(zone.transform, true);
+            var altarBase = S3SceneBuilder.Box("Altar Base", position + Vector3.up * 0.2f, new Vector3(2.6f, 1.6f, 2.6f), stoneGrey * 0.85f);
+            GrayboxMaterials.TintStone(altarBase, stoneGrey * 0.85f);
+            altarBase.transform.SetParent(zone.transform, true);
             var top = S3SceneBuilder.Box("Altar Top", position + Vector3.up * 1.05f, new Vector3(3f, 0.2f, 3f), stoneGrey);
+            GrayboxMaterials.TintStone(top, stoneGrey);
             top.transform.SetParent(zone.transform, true);
             float topY = position.y + 1.15f;
-            var carving = ItemShape(itemId, new Vector3(position.x, topY + 0.015f, position.z), 1f, new Color(0.25f, 0.25f, 0.28f), true);
-            carving.transform.SetParent(zone.transform, true);
+            if (itemId != null)
+            {
+                var carving = ItemShape(itemId, new Vector3(position.x, topY + 0.015f, position.z), 1f, new Color(0.25f, 0.25f, 0.28f), true);
+                carving.transform.SetParent(zone.transform, true);
+            }
 
             var spot = new GameObject("Item Spot").transform;
             spot.SetParent(zone.transform, true);
@@ -658,12 +695,14 @@ namespace Badeland.EditorTools
             component.label = "Checkpoint";
             component.livingPlayersRevive = true;
             component.respawn = respawn;
-            component.requiredItemId = itemId;
+            component.requiredItemId = itemId ?? "";
             component.altarTop = spot;
+
+            if (itemId == null) return; // an altar that is already awake
 
             // The item itself, somewhere in the area, lying on the ground.
             itemPosition.y = Height(itemPosition.x, itemPosition.z) + 0.14f;
-            var glow = itemId == "key" ? new Color(1f, 0.8f, 0.25f) : new Color(0.3f, 0.9f, 0.9f);
+            var glow = itemId == "key" ? new Color(1f, 0.8f, 0.25f) : itemId == "shell" ? new Color(1f, 0.6f, 0.7f) : new Color(0.3f, 0.9f, 0.9f);
             var item = ItemShape(itemId, itemPosition, 1f, glow, false);
             item.name = "Item (" + itemId + ")";
             var sphere = item.AddComponent<SphereCollider>();
@@ -689,6 +728,15 @@ namespace Badeland.EditorTools
                 Part(root, PrimitiveType.Cube, new Vector3(0.1f, 0f, 0f), new Vector3(1.1f, thick, 0.16f), color, engraved);                      // the shaft
                 Part(root, PrimitiveType.Cube, new Vector3(0.5f, 0f, -0.17f), new Vector3(0.14f, thick, 0.3f), color, engraved);                  // teeth
                 Part(root, PrimitiveType.Cube, new Vector3(0.28f, 0f, -0.12f), new Vector3(0.14f, thick, 0.2f), color, engraved);
+            }
+            else if (id == "shell")
+            {
+                Part(root, PrimitiveType.Sphere, Vector3.zero, new Vector3(1.1f, thick * 3f, 0.9f), color, engraved);                             // the shell
+                for (int i = -2; i <= 2; i++)
+                {
+                    var ridge = Part(root, PrimitiveType.Cube, new Vector3(0.1f, 0f, i * 0.2f), new Vector3(0.9f, thick * 3.5f, 0.05f), color * 0.6f, engraved);
+                    ridge.transform.localRotation = Quaternion.Euler(0f, i * 12f, 0f);
+                }
             }
             else
             {
@@ -732,14 +780,9 @@ namespace Badeland.EditorTools
                 float x = Cx - Rx + (float)rng.NextDouble() * Rx * 2f;
                 float z = -Rz + (float)rng.NextDouble() * Rz * 2f;
                 if (!Inside(x, z, 2.5f) || !EdgeBias(rng, x, z)) continue;
-                if (Mathf.Abs(x + 16f) < 4f) continue; // not in the doorway of the gate
-                if (x > -39f && x < -33f && Mathf.Abs(z) < 5f) continue; // keep the wake-up spot clear
+                if (ReservedFn != null && ReservedFn(x, z)) continue;
                 float h0 = Height(x, z);
-                if (h0 < 0.2f) continue; // not in the lake basin
-                bool nearPool = false;
-                foreach (var pool in Pools)
-                    if ((x - pool.x) * (x - pool.x) + (z - pool.y) * (z - pool.y) < (pool.z + 1.5f) * (pool.z + 1.5f)) nearPool = true;
-                if (nearPool) continue;
+                if (h0 < 0.2f) continue; // not in a water basin
 
                 Color glow = glowColors[rng.Next(glowColors.Length)];
                 float height = 0.8f + (float)rng.NextDouble() * 2.6f;
@@ -804,8 +847,8 @@ namespace Badeland.EditorTools
             int placed = 0;
             for (int tries = 0; tries < 200 && placed < 12; tries++)
             {
-                float x = -36f + (float)rng.NextDouble() * 72f;
-                float z = -20f + (float)rng.NextDouble() * 40f;
+                float x = Cx - Rx + 4f + (float)rng.NextDouble() * (Rx * 2f - 8f);
+                float z = -Rz + 4f + (float)rng.NextDouble() * (Rz * 2f - 8f);
                 if (!Inside(x, z, 7f)) continue;
                 placed++;
 
@@ -833,7 +876,7 @@ namespace Badeland.EditorTools
 
         // ------------------------------------------------------------------ the great door
 
-        static void BuildExitDoor(List<Light> lights)
+        static void BuildExitDoor(List<Light> lights, string nextScene = "Inside_02_SunkenHarbour", string message = "The great door shivers, and opens a little...\n\nIt does not lead out.\nIt leads deeper.")
         {
             // A huge glowing ring set into the east end of the cavern, like an iris that has not yet opened.
             var violet = new Color(0.65f, 0.3f, 1f);
@@ -853,7 +896,9 @@ namespace Badeland.EditorTools
             exit.transform.position = new Vector3(exitX, Height(exitX, 0f) + 2f, 0f);
             var box = exit.AddComponent<BoxCollider>();
             box.size = new Vector3(6f, 5f, 14f);
-            exit.AddComponent<AreaExit>().message = "The great door shivers, and opens a little...\n\nIt does not lead out.\nIt leads deeper.\n\n(This is as far as the first area goes. More to come.)";
+            var areaExit = exit.AddComponent<AreaExit>();
+            areaExit.message = message;
+            areaExit.nextScene = nextScene;
         }
 
         // ------------------------------------------------------------------ breathing

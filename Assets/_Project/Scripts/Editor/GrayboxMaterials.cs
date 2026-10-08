@@ -44,7 +44,7 @@ namespace Badeland.EditorTools
         public static void TintTextured(GameObject go, Color color, bool ground)
         {
             Directory.CreateDirectory(Folder);
-            string path = Folder + "/M_Badeland_" + (ground ? "CavernGround" : "CavernFlesh") + ".mat";
+            string path = Folder + "/M_Badeland_" + (ground ? "CavernGround" : "CavernFlesh") + CavernSuffix + ".mat";
 
             // Many objects share one material: make it once per build (deleting and remaking it for every wall piece
             // left the earlier pieces pointing at a deleted material, which shows as magenta).
@@ -69,6 +69,9 @@ namespace Badeland.EditorTools
         }
 
         static Material _cavernGround, _cavernFlesh;
+
+        /// <summary>Added to the cavern material names, so each room keeps its own and building one never breaks another.</summary>
+        public static string CavernSuffix = "";
 
         /// <summary>Forget the shared cavern materials, so the next build makes fresh ones.</summary>
         public static void ResetTexturedMaterials() { _cavernGround = null; _cavernFlesh = null; }

@@ -84,6 +84,9 @@ namespace Badeland.EditorTools
         }
 
         // A little round islet (when asked) with a chest on it, or just the chest.
+        /// <summary>A hidden chest anywhere (also used by the Chapter 2 rooms).</summary>
+        public static void PlaceChest(string id, Vector3 position, float yaw) => Chest(id, position, yaw, false);
+
         static void Chest(string id, Vector3 position, float yaw, bool islet)
         {
             if (islet)
