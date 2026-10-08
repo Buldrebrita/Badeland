@@ -53,6 +53,10 @@ namespace Badeland.Networking
         readonly NetworkVariable<bool> _eaten = new NetworkVariable<bool>(
             false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
+        // True while this player is a ghost (dead). Written by the owner, read by everyone.
+        readonly NetworkVariable<bool> _dead = new NetworkVariable<bool>(
+            false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+
         CharacterController _cc;
         PlayerController _controller;
         PlayerInputReader _input;
@@ -113,6 +117,8 @@ namespace Badeland.Networking
                 if (IsServer) MonsterEncounter.BroadcastStart = (strike, rails, warning) => StartEncounterClientRpc(strike, rails, warning);
 
                 _controller.Swallowed += OnLocalSwallowed;
+                _controller.Died += OnLocalDied;
+                _controller.Resurrected += OnLocalResurrected;
                 _controller.Revived += OnLocalRevived;
                 if (IsServer) ChapterTransition.NetworkLoad = name => NetworkManager.SceneManager.LoadScene(name, LoadSceneMode.Single);
 
@@ -131,6 +137,8 @@ namespace Badeland.Networking
                 OnHeldFishChanged(-1, _heldFish.Value);
                 _eaten.OnValueChanged += (_, eaten) => { if (eaten) _controller.Eat(); else _controller.Revive(); };
                 if (_eaten.Value) _controller.Eat();
+                _dead.OnValueChanged += (_, dead) => { if (dead) _controller.Die(); else _controller.Resurrect(transform.position, transform.eulerAngles.y); };
+                if (_dead.Value) _controller.Die();
                 _state.OnValueChanged += (_, v) => _hasState = true;
                 if (_state.Value.position != Vector3.zero)
                 {
@@ -176,6 +184,8 @@ namespace Badeland.Networking
                 MonsterEncounter.IsAuthority = null;
                 MonsterEncounter.BroadcastStart = null;
                 _controller.Swallowed -= OnLocalSwallowed;
+                _controller.Died -= OnLocalDied;
+                _controller.Resurrected -= OnLocalResurrected;
                 _controller.Revived -= OnLocalRevived;
                 ChapterTransition.NetworkLoad = null;
             }
@@ -227,6 +237,8 @@ namespace Badeland.Networking
 
         void OnLocalSwallowed() => _eaten.Value = true;
         void OnLocalRevived() => _eaten.Value = false;
+        void OnLocalDied() => _dead.Value = true;
+        void OnLocalResurrected() => _dead.Value = false;
 
         // ---------------------------------------------------------------- trap, treasure, monster
 

@@ -42,7 +42,7 @@ namespace Badeland.World
             if (_holder != null)
             {
                 transform.position = _holder.transform.position + Vector3.up * 1.7f;
-                if (_holder.InteractPressed) Drop();
+                if (_holder.IsDead || _holder.InteractPressed) Drop();
                 return;
             }
 
@@ -86,6 +86,8 @@ namespace Badeland.World
             // Put it down just in front of the player, on the ground.
             Vector3 spot = holder.transform.position + holder.transform.forward * 1.4f;
             spot.y = holder.FeetY() + radius;
+            if (Physics.Raycast(spot + Vector3.up * 3f, Vector3.down, out var hit, 8f, ~0, QueryTriggerInteraction.Ignore))
+                spot.y = hit.point.y + radius + 0.1f; // rest on the ground below, even on uneven floor
             transform.position = spot;
         }
 

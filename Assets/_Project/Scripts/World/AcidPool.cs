@@ -6,8 +6,8 @@ namespace Badeland.World
 {
     /// <summary>
     /// A pool of the creature's digestive acid. Anyone who steps in starts to be etched away: their colour turns sickly
-    /// and eaten, bubbles boil around them, and if they stay in too long they dissolve and come back at the last safe
-    /// spot they stood on. A heavy stone dropped in is etched away too, and returns to where it started.
+    /// and eaten, bubbles boil around them, and if they stay in too long they die: their bones are left behind and they
+    /// become a ghost. A heavy stone dropped in is etched away too, and returns to where it started.
     /// </summary>
     public class AcidPool : MonoBehaviour
     {
@@ -67,7 +67,7 @@ namespace Badeland.World
             for (int i = 0; i < players.Count; i++)
             {
                 var p = players[i];
-                if (p.IsEaten) continue;
+                if (p.IsEaten || p.IsDead) continue;
                 if (!_victims.TryGetValue(p, out var v)) { v = Capture(p); _victims[p] = v; }
 
                 Vector3 pos = p.transform.position;
@@ -88,10 +88,10 @@ namespace Badeland.World
 
                 if (p.IsLocal && v.exposure >= 1f)
                 {
-                    Vector3 back = v.hasSafe ? v.lastSafe + Vector3.up * 0.3f : c + (flat.sqrMagnitude < 0.01f ? Vector3.right : flat.normalized) * (radius + 3f) + Vector3.up * 2f;
-                    p.Teleport(back, p.transform.eulerAngles.y);
                     v.exposure = 0f;
                     ApplyEtch(v, 0f);
+                    v.etched = false;
+                    p.Die(); // the acid has eaten them: bones are left in the pool
                 }
             }
 

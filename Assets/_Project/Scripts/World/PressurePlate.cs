@@ -23,7 +23,6 @@ namespace Badeland.World
         void Awake()
         {
             _box = GetComponent<BoxCollider>();
-            _box.isTrigger = true;
             _block = new MaterialPropertyBlock();
         }
 
@@ -38,7 +37,7 @@ namespace Badeland.World
             for (int i = 0; i < players.Count && !pressed; i++)
             {
                 var p = players[i];
-                if (p.IsEaten) continue;
+                if (p.IsEaten || p.IsDead) continue;
                 Vector3 pos = p.transform.position;
                 if (pos.x < b.min.x || pos.x > b.max.x || pos.z < b.min.z || pos.z > b.max.z) continue;
                 if (p.FeetY() > b.max.y + 0.4f || p.FeetY() < b.min.y - 0.6f) continue;

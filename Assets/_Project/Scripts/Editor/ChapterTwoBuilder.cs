@@ -89,6 +89,7 @@ namespace Badeland.EditorTools
             BuildGateAndPuzzle();
             BuildMushrooms(rng, glowLights);
             BuildNotes();
+            BuildReviveZones();
             BuildJellyfish(rng);
             BuildExitDoor(glowLights);
             BuildBreathing(lake, glowLights);
@@ -606,7 +607,8 @@ namespace Badeland.EditorTools
             S3SceneBuilder.Box("Choke Wall South", new Vector3(-16f, 1.5f, -14.8f), new Vector3(3f, 7f, 15.6f), Stone);
 
             // The plate sits on a level patch of ground (see FlatSpots), a stone slab just proud of the floor with a glowing ring around it.
-            float plateTop = Height(PlateX, PlateZ) + 0.08f;
+            float plateTop = Height(PlateX, PlateZ) + 0.3f;
+            S3SceneBuilder.Box("Plate Step", new Vector3(PlateX, plateTop - 0.18f - 0.6f, PlateZ), new Vector3(7.6f, 1.2f, 7.6f), Stone * 0.9f);
             var plateObject = S3SceneBuilder.Box("Pressure Plate", new Vector3(PlateX, plateTop - 0.6f, PlateZ), new Vector3(6f, 1.2f, 6f), new Color(0.35f, 0.3f, 0.4f));
             var ringColor = new Color(0.3f, 0.9f, 1f);
             var ring = S3SceneBuilder.Cyl("Plate Ring", new Vector3(PlateX, plateTop + 0.01f, PlateZ), new Vector3(6.6f, 0.01f, 6.6f), ringColor);
@@ -615,7 +617,6 @@ namespace Badeland.EditorTools
             AddGlow(new Vector3(PlateX, plateTop + 2.5f, PlateZ), ringColor, 2f, 10f);
             var plate = plateObject.AddComponent<PressurePlate>();
             plate.visual = plateObject.GetComponent<Renderer>();
-            plateObject.GetComponent<BoxCollider>().isTrigger = true;
 
             var gateObject = S3SceneBuilder.Box("Bone Gate", new Vector3(-16f, 1.5f, 0f), new Vector3(3f, 7f, 14f), Bone);
             var gate = gateObject.AddComponent<SlidingGate>();
@@ -627,6 +628,34 @@ namespace Badeland.EditorTools
             GrayboxMaterials.TintGlow(stone, new Color(1f, 0.55f, 0.15f), 0.9f);
             stone.AddComponent<Carryable>();
             AddGlow(stone.transform.position + Vector3.up * 1.2f, new Color(1f, 0.6f, 0.25f), 3.5f, 9f);
+        }
+
+        // ------------------------------------------------------------------ where the dead come back
+
+        static void BuildReviveZones()
+        {
+            // The start of the area: ghosts must float back here. Then a checkpoint beyond the gate, and one on the far bank.
+            Zone(new Vector3(-35f, 0f, 1f), 7f, "Start", false, new Color(0.7f, 0.85f, 1f));
+            Zone(new Vector3(-8f, 0f, 0f), 5f, "Checkpoint", true, new Color(0.3f, 1f, 0.6f));
+            Zone(new Vector3(31f, 0f, 0f), 5f, "Checkpoint", true, new Color(0.3f, 1f, 0.6f));
+        }
+
+        static void Zone(Vector3 position, float radius, string label, bool livingRevive, Color color)
+        {
+            position.y = Height(position.x, position.z) + 0.05f;
+            var zone = new GameObject(label + " Zone");
+            zone.transform.position = position;
+            var component = zone.AddComponent<ReviveZone>();
+            component.radius = radius;
+            component.label = label;
+            component.livingPlayersRevive = livingRevive;
+            component.respawn = zone.transform;
+
+            var ring = S3SceneBuilder.Cyl("Zone Ring", position + Vector3.up * 0.03f, new Vector3(radius * 1.2f, 0.01f, radius * 1.2f), color);
+            GrayboxMaterials.TintGlow(ring, color, 0.8f);
+            Object.DestroyImmediate(ring.GetComponent<Collider>());
+            ring.transform.SetParent(zone.transform, true);
+            component.beacon = AddGlow(position + Vector3.up * 3f, color, 1.5f, 12f, zone.transform);
         }
 
         // ------------------------------------------------------------------ mushrooms and lights

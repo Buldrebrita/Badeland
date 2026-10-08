@@ -15,7 +15,7 @@ namespace Badeland.Player
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     [RequireComponent(typeof(PlayerInputReader))]
-    public class PlayerController : MonoBehaviour
+    public partial class PlayerController : MonoBehaviour
     {
         [SerializeField] MovementSettings settings;
         [Tooltip("Movement is relative to this transform's yaw. Falls back to Camera.main.")]
@@ -97,6 +97,7 @@ namespace Badeland.Player
         {
             if (settings == null || IsEaten || IsExternallyControlled) return;
             float dt = Time.deltaTime;
+            if (IsDead) { UpdateGhost(dt); return; }
             _knockTimer -= dt;
 
             UpdateWaterState(dt);
@@ -254,13 +255,19 @@ namespace Badeland.Player
         /// <summary>The direction the player's stick points, relative to the camera, on the ground plane.</summary>
         public Vector3 WorldMoveDirection() => CameraRelative(MoveInput);
 
-        public bool InteractPressed => _input != null && _input.InteractPressed;
+        public bool InteractPressed => !IsDead && _input != null && _input.InteractPressed;
 
         /// <summary>The monster swallowed this player: hide them and switch their movement off.</summary>
         public void Eat(bool force = false)
         {
             if (IsEaten) return;
             if (Invulnerable && !force) return;
+            if (IsDead)
+            {
+                if (!force) return;
+                ClearGhostLook();
+                IsDead = false;
+            }
             IsEaten = true;
             foreach (var r in GetComponentsInChildren<Renderer>()) r.enabled = false;
             if (_cc != null) _cc.enabled = false;
@@ -334,7 +341,7 @@ namespace Badeland.Player
         /// <summary>Hit by an obstacle: shoved sideways and up. Ignored for a moment after a hit so it cannot repeat every frame.</summary>
         public void Knock(Vector3 horizontalVelocity, float upwardVelocity)
         {
-            if (_knockTimer > 0f || Invulnerable) return;
+            if (_knockTimer > 0f || Invulnerable || IsDead) return;
             _knockTimer = 0.6f;
             horizontalVelocity.y = 0f;
             _horizontalVelocity = horizontalVelocity;
