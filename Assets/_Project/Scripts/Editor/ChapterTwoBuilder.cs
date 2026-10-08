@@ -660,7 +660,6 @@ namespace Badeland.EditorTools
             component.respawn = respawn;
             component.requiredItemId = itemId;
             component.altarTop = spot;
-            component.beacon = AddGlow(position + Vector3.up * 3.5f, new Color(0.8f, 0.9f, 1f), 2f, 12f, zone.transform);
 
             // The item itself, somewhere in the area, lying on the ground.
             itemPosition.y = Height(itemPosition.x, itemPosition.z) + 0.14f;
@@ -675,7 +674,6 @@ namespace Badeland.EditorTools
             carry.pickupRadius = 2.2f;
             carry.carrySpeed = 0.95f;
             carry.carryJump = 0.95f;
-            AddGlow(itemPosition + Vector3.up * 1f, glow, 2f, 7f, item.transform);
         }
 
         // The shapes of the quest items. Built lying flat, so they work both as carved marks on the altar and as the objects themselves.
@@ -714,7 +712,7 @@ namespace Badeland.EditorTools
             go.transform.localPosition = localPosition;
             go.transform.localScale = localScale;
             Object.DestroyImmediate(go.GetComponent<Collider>());
-            if (engraved) GrayboxMaterials.Tint(go, color); else GrayboxMaterials.TintGlow(go, color, 1.3f);
+            GrayboxMaterials.Tint(go, color); // plain, nothing glows
             return go;
         }
 

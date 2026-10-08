@@ -17,16 +17,25 @@ namespace Badeland.EditorTools
     {
         const string Folder = "Assets/_Project/Art/Materials";
 
-        public static void Tint(GameObject go, Color color) => Apply(go, color, false, 0f);
+        public static void Tint(GameObject go, Color color) => Apply(go, color, false, 0f, "grain");
+
+        /// <summary>Puffy inflatable look: a quilted pillow pattern (waterpark decks and slides).</summary>
+        public static void TintQuilted(GameObject go, Color color) => Apply(go, color, false, 0f, "quilt");
+
+        /// <summary>Rough stone look (rocks, walls, altars).</summary>
+        public static void TintStone(GameObject go, Color color) => Apply(go, color, false, 0f, "stone");
+
+        /// <summary>Wood grain (docks, bridges, huts, ships).</summary>
+        public static void TintWood(GameObject go, Color color) => Apply(go, color, false, 0f, "wood");
 
         /// <summary>A colour that glows (bioluminescent plants, the monster's eyes). Strength 1 is a soft glow, 3 is bright.</summary>
-        public static void TintGlow(GameObject go, Color color, float strength = 1.5f) => Apply(go, color, false, strength);
+        public static void TintGlow(GameObject go, Color color, float strength = 1.5f) => Apply(go, color, false, strength, null);
 
         /// <summary>Semi-transparent material for water, markers and the like.</summary>
-        public static void TintWater(GameObject go, Color color) => Apply(go, color, true, 0f);
+        public static void TintWater(GameObject go, Color color) => Apply(go, color, true, 0f, null);
 
         /// <summary>Kept for old callers. (The slide's mesh is double-sided in the mesh itself.)</summary>
-        public static void TintDoubleSided(GameObject go, Color color) => Apply(go, color, false, 0f);
+        public static void TintDoubleSided(GameObject go, Color color) => Apply(go, color, false, 0f, "grain");
 
         /// <summary>
         /// A material with a generated, tiling texture: mottled living flesh with veins (or, for the ground, a pitted
@@ -63,6 +72,80 @@ namespace Badeland.EditorTools
 
         /// <summary>Forget the shared cavern materials, so the next build makes fresh ones.</summary>
         public static void ResetTexturedMaterials() { _cavernGround = null; _cavernFlesh = null; }
+
+        // Soft generated textures that are multiplied with a colour: grain, quilted pillows, stone, wood.
+        static Texture2D DetailTexture(string kind)
+        {
+            string folder = "Assets/_Project/Art/Textures";
+            string path = folder + "/Detail_" + kind + "_v1.png";
+            Directory.CreateDirectory(folder);
+
+            if (!File.Exists(path))
+            {
+                const int size = 128;
+                const float tau = Mathf.PI * 2f;
+                var tex = new Texture2D(size, size, TextureFormat.RGBA32, true);
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        float u = x / (float)size, v = y / (float)size;
+                        float hash = Hash(x, y);
+                        float blotch = 0.5f + (Mathf.Sin(tau * 2f * u + 1.7f * Mathf.Sin(tau * 3f * v)) + Mathf.Sin(tau * 3f * v + 1.3f * Mathf.Sin(tau * 2f * u + 1f))) * 0.25f;
+                        float value;
+
+                        switch (kind)
+                        {
+                            case "quilt":
+                            {
+                                // Pillow baffles: 4 x 4 cushions per tile, bright in the middle, dark in the seams.
+                                float fu = Mathf.Repeat(u * 4f, 1f), fv = Mathf.Repeat(v * 4f, 1f);
+                                float pillow = Mathf.Sin(Mathf.PI * fu) * Mathf.Sin(Mathf.PI * fv);
+                                value = Mathf.Lerp(0.62f, 1f, Mathf.Pow(pillow, 0.6f)) - 0.03f * hash;
+                                break;
+                            }
+                            case "stone":
+                            {
+                                float cracks = Mathf.Abs(Mathf.Sin(tau * (3f * u + 0.7f * Mathf.Sin(tau * 2f * v))));
+                                float crack = 1f - Mathf.SmoothStep(0f, 0.06f, cracks);
+                                value = 0.78f + 0.12f * blotch - 0.35f * crack + 0.1f * (hash - 0.5f);
+                                break;
+                            }
+                            case "wood":
+                            {
+                                float rings = 0.5f + 0.5f * Mathf.Sin(tau * (8f * v + 0.6f * Mathf.Sin(tau * u)));
+                                float board = Mathf.Abs(Mathf.Sin(tau * 2f * u));
+                                float seam = 1f - Mathf.SmoothStep(0f, 0.05f, board);
+                                value = 0.7f + 0.2f * rings - 0.3f * seam + 0.06f * (hash - 0.5f);
+                                break;
+                            }
+                            default: // grain
+                                value = 0.84f + 0.1f * blotch + 0.08f * (hash - 0.5f);
+                                break;
+                        }
+
+                        value = Mathf.Clamp01(value);
+                        tex.SetPixel(x, y, new Color(value, value, value, 1f));
+                    }
+                }
+                tex.Apply();
+                File.WriteAllBytes(path, tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+                AssetDatabase.ImportAsset(path);
+            }
+
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
+
+        static float Hash(int x, int y)
+        {
+            unchecked
+            {
+                uint h = (uint)(x * 374761393 + y * 668265263);
+                h = (h ^ (h >> 13)) * 1274126177u;
+                return ((h ^ (h >> 16)) & 0xFFFF) / 65535f;
+            }
+        }
 
         static Texture2D FleshTexture(bool ground)
         {
@@ -137,10 +220,19 @@ namespace Badeland.EditorTools
             renderer.sharedMaterial = mat;
         }
 
-        static void Apply(GameObject go, Color color, bool transparent, float glow)
+        static void Apply(GameObject go, Color color, bool transparent, float glow, string textureKind)
         {
             Directory.CreateDirectory(Folder);
-            string path = Folder + "/M_Graybox_" + (transparent ? "Water_" : "") + (glow > 0f ? "Glow" + Mathf.RoundToInt(glow * 10f) + "_" : "") + ColorUtility.ToHtmlStringRGBA(color) + ".mat";
+
+            // Textured materials tile once per roughly three metres, so big and small objects have the same grain.
+            int tiling = 1;
+            if (textureKind != null)
+            {
+                Vector3 s = go.transform.lossyScale;
+                tiling = Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(Mathf.Abs(s.x), Mathf.Abs(s.z)) / 3f), 1, 12);
+            }
+            string kindTag = textureKind != null ? textureKind + tiling + "_" : "";
+            string path = Folder + "/M_Graybox_" + (transparent ? "Water_" : "") + (glow > 0f ? "Glow" + Mathf.RoundToInt(glow * 10f) + "_" : "") + kindTag + ColorUtility.ToHtmlStringRGBA(color) + ".mat";
 
             var renderer = go.GetComponent<Renderer>();
             Shader shader = Template().shader;
@@ -151,6 +243,15 @@ namespace Badeland.EditorTools
             else if (mat.shader != shader) mat.shader = shader; // repair: it was made for a different render pipeline
 
             SetColor(mat, color);
+            if (textureKind != null)
+            {
+                string textureProperty = TextureProperty(mat);
+                if (textureProperty != null)
+                {
+                    mat.SetTexture(textureProperty, DetailTexture(textureKind));
+                    mat.SetTextureScale(textureProperty, new Vector2(tiling, tiling));
+                }
+            }
             if (transparent) MakeTransparent(mat);
             if (glow > 0f) MakeGlow(mat, color, glow);
 

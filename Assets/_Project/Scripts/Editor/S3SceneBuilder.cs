@@ -145,7 +145,12 @@ namespace Badeland.EditorTools
 
             var trackerGo = new GameObject("LapTracker");
             var tracker = trackerGo.AddComponent<LapTracker>();
-            tracker.checkpoints = new[] { cpRight, cpTop, cpLeft, finish };
+            // The route: right straight, top straight, the long Northern Run (its own flag gates), the left straight, finish.
+            var order = new List<Checkpoint> { cpRight, cpTop };
+            order.AddRange(CourseExtension.Build());
+            order.Add(cpLeft);
+            order.Add(finish);
+            tracker.checkpoints = order.ToArray();
             tracker.totalLaps = 3;
 
             // ---- Obstacles
@@ -328,7 +333,7 @@ namespace Badeland.EditorTools
             }
         }
 
-        static Checkpoint Gate(string name, Vector3 position, float yawDegrees, Color flagColor, float width = 8f)
+        internal static Checkpoint Gate(string name, Vector3 position, float yawDegrees, Color flagColor, float width = 8f)
         {
             var root = new GameObject(name);
             root.transform.position = position;
@@ -370,8 +375,27 @@ namespace Badeland.EditorTools
         // Inflatable deck: saturated blue, floating with its top 0.6 m above the sea.
         internal static GameObject Deck(string name, Vector3 position, Vector3 scale)
         {
-            var deck = Box(name, position, scale, new Color(0.15f, 0.4f, 0.95f));
+            var color = new Color(0.15f, 0.4f, 0.95f);
+            var deck = Box(name, position, scale, color);
+            GrayboxMaterials.TintQuilted(deck, color); // puffy, quilted like a pool inflatable
             Foam(deck, new Vector3(scale.x + 1.4f, 0.04f, scale.z + 1.4f));
+
+            // Fat white tubes along the edges (for looks only: you can still climb out of the water onto the deck).
+            var tubeColor = new Color(0.97f, 0.97f, 1f);
+            for (int side = -1; side <= 1; side += 2)
+            {
+                var along = Cyl("Edge Tube", new Vector3(position.x, 0.75f, position.z + side * (scale.z * 0.5f - 0.25f)), new Vector3(0.7f, scale.x * 0.5f, 0.7f), tubeColor);
+                along.transform.rotation = Quaternion.Euler(0f, 0f, 90f);
+                GrayboxMaterials.TintQuilted(along, tubeColor);
+                Object.DestroyImmediate(along.GetComponent<Collider>());
+                along.transform.SetParent(deck.transform, true);
+
+                var across = Cyl("Edge Tube", new Vector3(position.x + side * (scale.x * 0.5f - 0.25f), 0.75f, position.z), new Vector3(0.7f, scale.z * 0.5f, 0.7f), tubeColor);
+                across.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+                GrayboxMaterials.TintQuilted(across, tubeColor);
+                Object.DestroyImmediate(across.GetComponent<Collider>());
+                across.transform.SetParent(deck.transform, true);
+            }
             return deck;
         }
 
