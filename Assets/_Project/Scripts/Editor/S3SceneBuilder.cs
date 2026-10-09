@@ -72,6 +72,11 @@ namespace Badeland.EditorTools
                 AssetDatabase.CreateAsset(settings, settingsPath);
             }
 
+            // Swimming is slow: falling in is a setback, not a shortcut.
+            settings.swimSpeed = 3.2f;
+            settings.swimAcceleration = 14f;
+            EditorUtility.SetDirty(settings);
+
             var cod = Species("Cod", "Cod", new Color(0.9f, 0.75f, 0.4f), false,
                 new MovementModifier { speedMultiplier = 1.4f, jumpMultiplier = 1f });
             var salmon = Species("Salmon", "Salmon", new Color(1f, 0.5f, 0.45f), false,

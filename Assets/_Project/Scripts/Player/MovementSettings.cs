@@ -34,7 +34,7 @@ namespace Badeland.Player
         [Min(1f)] public float maxFallSpeed = 30f;
 
         [Header("Swim")]
-        [Min(0f)] public float swimSpeed = 6f;
+        [Min(0f)] public float swimSpeed = 3.4f;
         [Min(0f)] public float swimAcceleration = 25f;
         [Min(0f)] public float swimDeceleration = 18f;
         [Tooltip("How deep (metres of the body below the surface) before you start swimming instead of wading.")]

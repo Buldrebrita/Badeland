@@ -46,7 +46,8 @@ namespace Badeland.EditorTools
         static readonly Color Foamy = new Color(0.92f, 0.98f, 1f);
         static readonly Color Glass = new Color(0.3f, 0.65f, 1f, 0.35f);
 
-        const float Top = 0.6f;     // the top of every deck, above the sea
+        const float Top = 0.6f;     // the top of a deck, above its own middle
+        const float Lift = 2.4f;    // how high the whole course floats above the sea (too high to climb out of the water)
         const float Width = 10f;    // how wide the main route is
 
         static Vector3 _pos, _dir;
@@ -67,43 +68,65 @@ namespace Badeland.EditorTools
             Vector3 east = Vector3.right, south = Vector3.back, west = Vector3.left;
 
             // ---- 1. The start platform, in the north-west corner of the course.
-            L.startCenter = new Vector3(-53f, 0f, 100f);
+            L.startCenter = new Vector3(-53f, Lift, 144f);
             L.startSize = new Vector3(24f, 1.2f, 18f);
             StartPlatform(L.startCenter, east);
+            Pylons(L.startCenter, east, 24f, 18f);
             L.startSpawn = L.startCenter + new Vector3(-2f, 1.8f, 0f);
 
-            _pos = new Vector3(-41f, 0f, 100f);
+            _pos = new Vector3(-41f, Lift, 144f);
             _dir = east;
 
+            // ---- The far end of the snake: two more hard lanes (C and D) before the old lanes.
+            Place("C1 Rotating cross", 14f, Width, ObsC1Cross);
+            Place("C2 Pendulum corridor", 16f, Width, ObsC2Pendulums);
+            gates.Add(MakeGate(L.sections.Count - 1));
+            Place("C3 Crumbling planks", 14f, Width, ObsC3Crumbling);
+            Place("C4 Sliding walls", 14f, Width, ObsC4SlidingWalls);
+            Corner("Corner E", south);
+            Place("C5 Cross beam", 12f, 1.4f, ObsC5CrossBeam, false);
+            gates.Add(MakeGate(L.sections.Count - 1));
+            Corner("Corner F", west);
+
+            Place("D1 Bounce chain", 16f, Width, ObsD1BounceChain, false);
+            Place("D2 Windmills", 14f, Width, ObsD2Windmills);
+            gates.Add(MakeGate(L.sections.Count - 1));
+            Place("D3 Twin ferries", 16f, Width, ObsD3TwinFerries, false);
+            Place("D4 Hop stones", 14f, Width, ObsD4HopStones, false);
+            Corner("Corner G", south);
+            Place("D5 Pendulum bridge", 12f, 3.2f, ObsD5PendulumBridge, false);
+            gates.Add(MakeGate(L.sections.Count - 1));
+            Corner("Corner H", east);
+
             // ---- The first half of the snake: the hard warm-up lanes (A and B), then down to the old lane.
-            Place("A1 Zigzag pads", 16f, Width, ObsA1ZigzagPads);
+            Place("A1 Zigzag pads", 16f, Width, ObsA1ZigzagPads, false);
             Place("A2 Sweeper deck", 14f, Width, ObsA2Sweepers);
             gates.Add(MakeGate(L.sections.Count - 1));
-            Place("A3 Ferry crossing", 14f, Width, ObsA3Ferry);
+            Place("A3 Ferry crossing", 14f, Width, ObsA3Ferry, false);
             Place("A4 Springy mattresses", 14f, Width, ObsA4Mattresses);
             Corner("Corner A", south);
-            Place("A5 Narrow beam", 12f, 1.4f, ObsA5NarrowBeam);
+            Place("A5 Narrow beam", 12f, 1.4f, ObsA5NarrowBeam, false);
             gates.Add(MakeGate(L.sections.Count - 1));
             Corner("Corner B", west);
 
             Place("B1 Spinning discs", 16f, Width, ObsB1TwoDiscs);
-            Place("B2 Log gauntlet", 16f, Width, ObsB2Logs);
+            Place("B2 Log gauntlet", 16f, Width, ObsB2Logs, false);
             gates.Add(MakeGate(L.sections.Count - 1));
             Place("B3 Ball run", 14f, Width, ObsB3Balls);
             Place("B4 Steep slide", 14f, Width, ObsB4Slide);
             Corner("Corner C", south);
-            Place("B5 Wobble steps", 12f, 3.2f, ObsB5Steps);
+            Place("B5 Wobble steps", 12f, 3.2f, ObsB5Steps, false);
             gates.Add(MakeGate(L.sections.Count - 1));
             Corner("Corner D", east);
 
             // ---- The second half: the lanes below.
-            Place("2 Wobble bridge", 16f, 3.6f, Obs2WobbleBridge);
+            Place("2 Wobble bridge", 16f, 3.6f, Obs2WobbleBridge, false);
             Place("3 Tunnel", 16f, 5.6f, Obs3Tunnel);
             Place("4 Bouncing pillars", 14f, Width, Obs4Pillars);
             Place("5 Climbing wall", 12f, Width, Obs5ClimbingWall);
             gates.Add(MakeGate(L.sections.Count - 1));
             var trapPad = Corner("Corner 1", south);                          // the trap door pad
-            Place("6 Floating logs", 12f, Width, Obs6Logs);
+            Place("6 Floating logs", 12f, Width, Obs6Logs, false);
             Corner("Corner 2", west);
 
             Place("7 Rotating platform", 16f, Width, Obs7RotatingDisc);
@@ -112,19 +135,20 @@ namespace Badeland.EditorTools
             Place("9 Swinging balls", 16f, Width, Obs9Pendulums);
             Place("10 Slide", 14f, Width, Obs10Slide);
             Corner("Corner 3", south);
-            Place("11 Balance section", 12f, 2.0f, Obs11Balance);
+            Place("11 Balance section", 12f, 2.0f, Obs11Balance, false);
             gates.Add(MakeGate(L.sections.Count - 1));
             Corner("Corner 4", east);
 
             Place("12 Rotating padded arms", 16f, Width, Obs12PaddedArms);
             Place("13 Arch maze", 16f, Width, Obs13ArchMaze);
             gates.Add(MakeGate(L.sections.Count - 1));
-            Place("14 Final bridge", 30f, 4.2f, Obs14FinalBridge);
+            Place("14 Final bridge", 30f, 4.2f, Obs14FinalBridge, false);
 
             // ---- 15. The finish platform, joined to the end of the final bridge.
             L.arenaSize = new Vector3(28f, 1.2f, 24f);
             L.arenaCenter = _pos + east * (L.arenaSize.x * 0.5f);
             FinishPlatform(L.arenaCenter, east);
+            Pylons(L.arenaCenter, east, 28f, 24f);
 
             gates.Add(S3SceneBuilder.Gate("Finish line", L.arenaCenter + new Vector3(-L.arenaSize.x * 0.5f + 3f, 0f, 0f), 90f, new Color(0.2f, 0.9f, 0.3f), 16f));
             L.gates = gates.ToArray();
@@ -134,9 +158,9 @@ namespace Badeland.EditorTools
             var wallSection = L.sections.Find(q => q.name == "5 Climbing wall");
             L.trapReturn = wallSection.start + wallSection.direction * 2f + Vector3.up * 1.8f;
 
-            L.courseCenter = new Vector3(-9f, 0f, 56f);
+            L.courseCenter = new Vector3(-9f, 0f, 78f);
             L.areaMin = new Vector2(-82f, -28f);
-            L.areaMax = new Vector2(64f, 122f);
+            L.areaMax = new Vector2(64f, 166f);
 
             BuildFish(cod, salmon, clown);
             BuildChests();
@@ -151,12 +175,13 @@ namespace Badeland.EditorTools
         }
 
         // Puts an obstacle at the end of the route so far, and moves the end of the route past it.
-        static Transform Place(string name, float length, float width, System.Action<Transform, float, float> build)
+        static Transform Place(string name, float length, float width, System.Action<Transform, float, float> build, bool supports = true)
         {
             Vector3 mid = _pos + _dir * (length * 0.5f);
             var root = new GameObject("Obstacle " + name).transform;
             root.SetPositionAndRotation(mid, Quaternion.LookRotation(_dir));
             build(root, length, width);
+            if (supports) Pylons(mid, _dir, length, width);
 
             _layout.sections.Add(new Section { name = name, center = mid, direction = _dir, length = length, width = width, start = _pos });
             _pos += _dir * length;
@@ -171,6 +196,8 @@ namespace Badeland.EditorTools
             root.SetPositionAndRotation(centre, Quaternion.LookRotation(_dir));
 
             var pad = Platform(root, "Pad", 0f, 0f, Width, Width, true);
+            Pylon(centre + root.right * 2.6f + root.forward * 2.6f); Pylon(centre - root.right * 2.6f - root.forward * 2.6f);
+            Pylon(centre - root.right * 2.6f + root.forward * 2.6f); Pylon(centre + root.right * 2.6f - root.forward * 2.6f);
             bool exitRight = Vector3.Dot(newDir, root.right) > 0f;
             float half = Width * 0.5f;
             RailRun(root, new Vector3(-half, Top, half), new Vector3(half, Top, half));                       // straight on is closed
@@ -223,7 +250,10 @@ namespace Badeland.EditorTools
 
         static void Foam(Transform parent, Vector3 lp, float sx, float sz)
         {
+            return; // the course floats well above the water now, so there is no foam under it (see Pylons)
+#pragma warning disable CS0162
             P(parent, PrimitiveType.Cube, "Foam", new Vector3(lp.x, 0.03f, lp.z), new Vector3(sx + 1.2f, 0.04f, sz + 1.2f), Foamy, "plain", false);
+#pragma warning restore CS0162
         }
 
         // A thick inflatable platform: a pink rim all round and a purple floor inside, like in the reference picture.
@@ -271,6 +301,30 @@ namespace Badeland.EditorTools
             float half = width * 0.5f - 0.2f;
             RailRun(r, new Vector3(-half, Top, -length * 0.5f), new Vector3(-half, Top, length * 0.5f));
             RailRun(r, new Vector3(half, Top, -length * 0.5f), new Vector3(half, Top, length * 0.5f));
+        }
+
+        // A thick blue pylon with a pink float at the water, holding the course up (for looks only).
+        static void Pylon(Vector3 p)
+        {
+            float yTop = Lift - 0.4f, yBot = -0.5f;
+            P(null, PrimitiveType.Cylinder, "Pylon", new Vector3(p.x, (yTop + yBot) * 0.5f, p.z), new Vector3(1.5f, (yTop - yBot) * 0.5f, 1.5f), Blue, "quilt", false);
+            P(null, PrimitiveType.Cylinder, "Pylon Float", new Vector3(p.x, 0f, p.z), new Vector3(3.4f, 0.3f, 3.4f), Pink, "quilt", false);
+            P(null, PrimitiveType.Cylinder, "Pylon Foam", new Vector3(p.x, 0.03f, p.z), new Vector3(4.6f, 0.02f, 4.6f), Foamy, "plain", false);
+        }
+
+        static void PylonAt(Transform r, float x, float z) => Pylon(r.TransformPoint(new Vector3(x, 0f, z)));
+
+        // Pylons along the middle of a stretch, two abreast on wide stretches.
+        static void Pylons(Vector3 centre, Vector3 dir, float length, float width)
+        {
+            int rows = Mathf.Max(2, Mathf.CeilToInt(length / 6f));
+            Vector3 right = Vector3.Cross(Vector3.up, dir);
+            for (int i = 0; i < rows; i++)
+            {
+                Vector3 pos = centre + dir * (((i + 0.5f) / rows - 0.5f) * length);
+                if (width >= 8f) { Pylon(pos + right * 2.6f); Pylon(pos - right * 2.6f); }
+                else Pylon(pos);
+            }
         }
 
         // A mat that gives under your feet. Its top is at topY (local), and it hangs down to the water.
@@ -327,6 +381,7 @@ namespace Badeland.EditorTools
         {
             Color[] colors = { Yellow, Orange, Pink, Teal };
             int n = 8;
+            for (int i = 0; i < n; i += 3) PylonAt(r, 0f, -L * 0.5f + 1f + i * 2f);
             for (int i = 0; i < n; i++)
                 Soft(r, "Bridge Plank " + i, 0f, -L * 0.5f + 1f + i * 2f, W, 1.9f, Top, colors[i % colors.Length], White, 0.55f, 17f, 0.8f, 0.1f);
             for (int side = -1; side <= 1; side += 2)
@@ -418,6 +473,7 @@ namespace Badeland.EditorTools
                 var holder = new GameObject("Floating Log " + i);
                 holder.transform.SetParent(r, false);
                 holder.transform.localPosition = new Vector3(0f, -0.25f, -4.4f + i * 2.2f);
+                if (i % 2 == 0) { PylonAt(r, -W * 0.5f + 0.4f, -4.4f + i * 2.2f); PylonAt(r, W * 0.5f - 0.4f, -4.4f + i * 2.2f); }
                 var visual = P(holder.transform, PrimitiveType.Cylinder, "Log", Vector3.zero, new Vector3(1.7f, (W - 1f) * 0.5f, 1.7f), colors[i % 2], "quilt", true, new Vector3(0f, 0f, 90f));
                 P(holder.transform, PrimitiveType.Cylinder, "Stripe", Vector3.zero, new Vector3(1.74f, 0.4f, 1.74f), White, "plain", false, new Vector3(0f, 0f, 90f));
                 var log = holder.AddComponent<RollingLog>();
@@ -593,6 +649,7 @@ namespace Badeland.EditorTools
             for (int i = 0; i < n; i++)
             {
                 float z = -L * 0.5f + 1f + i * 2f;
+                if (i % 3 == 0) PylonAt(r, 0f, z);
                 var plank = Soft(r, "Final Plank " + i, 0f, z, W, 1.9f, Top, colors[i % colors.Length], White, 0.55f, 14f, 0.6f, 0.42f);
                 if (i % 5 == 2)
                 {
@@ -625,6 +682,7 @@ namespace Badeland.EditorTools
                 var holder = new GameObject("Zigzag Pad " + i);
                 holder.transform.SetParent(r, false);
                 holder.transform.localPosition = new Vector3(x, 0f, z);
+                PylonAt(r, x, z);
                 P(holder.transform, PrimitiveType.Cylinder, "Pad", Vector3.zero, new Vector3(d, 0.6f, d), colors[i % colors.Length]);
                 P(holder.transform, PrimitiveType.Cylinder, "Foam", new Vector3(0f, 0.03f, 0f), new Vector3(d + 1.2f, 0.02f, d + 1.2f), Foamy, "plain", false);
                 var soft = holder.AddComponent<SoftPlatform>();
@@ -665,6 +723,7 @@ namespace Badeland.EditorTools
             P(holder.transform, PrimitiveType.Cube, "Floor", new Vector3(0f, 0.62f, 0f), new Vector3(W - 2.2f, 0.05f, 4.8f), Yellow, "plain", false);
             for (int side = -1; side <= 1; side += 2)
                 Tube(holder.transform, new Vector3(side * (W * 0.5f - 1.0f), 0.75f, -2.7f), new Vector3(side * (W * 0.5f - 1.0f), 0.75f, 2.7f), 0.7f, White);
+            PylonAt(r, -W * 0.5f + 0.6f, -L * 0.5f + 0.6f); PylonAt(r, W * 0.5f - 0.6f, -L * 0.5f + 0.6f); PylonAt(r, -W * 0.5f + 0.6f, L * 0.5f - 0.6f); PylonAt(r, W * 0.5f - 0.6f, L * 0.5f - 0.6f);
             var platform = holder.AddComponent<MovingPlatform>();
             platform.pointA = r.TransformPoint(new Vector3(0f, 0f, -L * 0.5f + 3f));
             platform.pointB = r.TransformPoint(new Vector3(0f, 0f, L * 0.5f - 3f));
@@ -691,6 +750,7 @@ namespace Badeland.EditorTools
             P(holder.transform, PrimitiveType.Capsule, "Beam", new Vector3(0f, -0.05f, 0f), new Vector3(1.1f, L * 0.5f, 1.3f), Pink, "quilt", false, new Vector3(90f, 0f, 0f));
             for (int i = 0; i < 6; i++)
                 P(holder.transform, PrimitiveType.Cylinder, "Band", new Vector3(0f, -0.05f, -L * 0.42f + i * L * 0.168f), new Vector3(1.18f, 0.12f, 1.38f), White, "plain", false, new Vector3(90f, 0f, 0f));
+            PylonAt(r, 0f, -L * 0.5f + 1f); PylonAt(r, 0f, 0f); PylonAt(r, 0f, L * 0.5f - 1f);
             var platform = holder.AddComponent<MovingPlatform>();
             platform.pointA = r.position - r.right * 1.0f;
             platform.pointB = r.position + r.right * 1.0f;
@@ -731,6 +791,7 @@ namespace Badeland.EditorTools
                 var holder = new GameObject("Gauntlet Log " + i);
                 holder.transform.SetParent(r, false);
                 holder.transform.localPosition = new Vector3(0f, -0.25f, -6.8f + i * 2.2f);
+                if (i % 2 == 0) { PylonAt(r, -W * 0.5f + 0.4f, -6.8f + i * 2.2f); PylonAt(r, W * 0.5f - 0.4f, -6.8f + i * 2.2f); }
                 var visual = P(holder.transform, PrimitiveType.Cylinder, "Log", Vector3.zero, new Vector3(1.7f, (W - 1f) * 0.5f, 1.7f), colors[i % 2], "quilt", true, new Vector3(0f, 0f, 90f));
                 P(holder.transform, PrimitiveType.Cylinder, "Stripe", Vector3.zero, new Vector3(1.74f, 0.4f, 1.74f), White, "plain", false, new Vector3(0f, 0f, 90f));
                 var log = holder.AddComponent<RollingLog>();
@@ -801,9 +862,223 @@ namespace Badeland.EditorTools
                 var holder = new GameObject("Wobble Step " + i);
                 holder.transform.SetParent(r, false);
                 holder.transform.localPosition = new Vector3((i % 2 == 0 ? -1f : 1f) * 0.6f, 0f, z);
+                PylonAt(r, (i % 2 == 0 ? -1f : 1f) * 0.6f, z);
                 P(holder.transform, PrimitiveType.Cylinder, "Step", Vector3.zero, new Vector3(2.2f, 0.6f, 2.2f), colors[i]);
                 var soft = holder.AddComponent<SoftPlatform>();
                 soft.dip = 0.5f; soft.stiffness = 18f; soft.damping = 1.0f; soft.idleBob = 0.1f;
+            }
+        }
+
+        // ------------------------------------------------------------------ the far lanes (C and D): the hardest
+
+        // C1. A big rotating cross close to the floor, with a second one spinning the other way behind it.
+        static void ObsC1Cross(Transform r, float L, float W)
+        {
+            Platform(r, "Deck", 0f, 0f, W, L);
+            Rails(r, L, W);
+            for (int k = 0; k < 2; k++)
+            {
+                var holder = new GameObject("Cross " + k);
+                holder.transform.SetParent(r, false);
+                holder.transform.localPosition = new Vector3(0f, Top + 0.55f, k == 0 ? -3.4f : 3.4f);
+                var a = P(holder.transform, PrimitiveType.Capsule, "Arm A", Vector3.zero, new Vector3(0.9f, 4.4f, 0.9f), k == 0 ? Orange : Teal, "quilt", false, new Vector3(0f, 0f, 90f));
+                var b = P(holder.transform, PrimitiveType.Capsule, "Arm B", Vector3.zero, new Vector3(0.9f, 4.4f, 0.9f), k == 0 ? Pink : Yellow, "quilt", false, new Vector3(90f, 0f, 0f));
+                P(holder.transform, PrimitiveType.Cylinder, "Hub", new Vector3(0f, -0.2f, 0f), new Vector3(1.5f, 0.6f, 1.5f), Blue, "quilt", false);
+                var spin = holder.AddComponent<RotatingBar>();
+                spin.degreesPerSecond = k == 0 ? 75f : -95f;
+                spin.hitBoxes = new[] { a.transform, b.transform };
+            }
+        }
+
+        // C2. A corridor of five fast pendulums, out of step with each other.
+        static void ObsC2Pendulums(Transform r, float L, float W)
+        {
+            Platform(r, "Deck", 0f, 0f, W, L);
+            Rails(r, L, W);
+            Color[] colors = { Red, Yellow, Teal, Pink, Orange };
+            for (int i = 0; i < 5; i++)
+            {
+                float z = -6.4f + i * 3.2f;
+                var pivot = new GameObject("Pendulum " + i);
+                pivot.transform.SetParent(r, false);
+                pivot.transform.localPosition = new Vector3(0f, Top + 6.2f, z);
+                P(pivot.transform, PrimitiveType.Cylinder, "Rope", new Vector3(0f, -2.1f, 0f), new Vector3(0.15f, 2.1f, 0.15f), new Color(0.9f, 0.85f, 0.65f), "plain", false);
+                var ball = P(pivot.transform, PrimitiveType.Sphere, "Swinging Ball", new Vector3(0f, -5.0f, 0f), Vector3.one * 2.2f, colors[i], "quilt", false);
+                var swing = pivot.AddComponent<Pendulum>();
+                swing.ball = ball.transform; swing.ballRadius = 1.1f; swing.maxAngle = 58f; swing.period = 2.4f; swing.phase = i * 2.1f;
+                for (int side = -1; side <= 1; side += 2)
+                    Tube(r, new Vector3(side * (W * 0.5f - 0.6f), Top, z), new Vector3(side * (W * 0.5f - 0.6f), Top + 6.6f, z), 0.9f, Orange);
+                Tube(r, new Vector3(-W * 0.5f + 0.6f, Top + 6.5f, z), new Vector3(W * 0.5f - 0.6f, Top + 6.5f, z), 0.9f, Orange);
+            }
+        }
+
+        // C3. Planks that give way a moment after you stand on them.
+        static void ObsC3Crumbling(Transform r, float L, float W)
+        {
+            Color[] colors = { Yellow, Orange, Pink, Teal, Green, Blue };
+            for (int i = 0; i < 6; i++)
+            {
+                float z = -L * 0.5f + 1.2f + i * 2.32f;
+                var holder = new GameObject("Crumbling Plank " + i);
+                holder.transform.SetParent(r, false);
+                holder.transform.localPosition = new Vector3((i % 2 == 0 ? -1f : 1f) * 1.2f, 0f, z);
+                P(holder.transform, PrimitiveType.Cube, "Plank", Vector3.zero, new Vector3(5.2f, 1.2f, 2.0f), colors[i]);
+                for (int side = -1; side <= 1; side += 2)
+                    Tube(holder.transform, new Vector3(side * 2.4f, 0.55f, -0.8f), new Vector3(side * 2.4f, 0.55f, 0.8f), 0.55f, White);
+                holder.AddComponent<CrumblingPlatform>();
+                PylonAt(r, (i % 2 == 0 ? -1f : 1f) * 1.2f, z);
+            }
+        }
+
+        // C4. Padded walls sliding across the lane: wait for the gap.
+        static void ObsC4SlidingWalls(Transform r, float L, float W)
+        {
+            Platform(r, "Deck", 0f, 0f, W, L);
+            Rails(r, L, W);
+            Color[] colors = { Red, Yellow, Pink };
+            for (int i = 0; i < 3; i++)
+            {
+                var holder = new GameObject("Sliding Wall " + i);
+                holder.transform.SetParent(r, false);
+                holder.transform.localPosition = new Vector3(0f, Top + 1.5f, -4.4f + i * 4.4f);
+                var box = holder.AddComponent<BoxCollider>();
+                box.size = new Vector3(6.4f, 3f, 1.2f);
+                P(holder.transform, PrimitiveType.Cube, "Wall", Vector3.zero, new Vector3(6.4f, 3f, 1.2f), colors[i], "quilt", false);
+                Tube(holder.transform, new Vector3(-3.0f, 1.5f, 0f), new Vector3(3.0f, 1.5f, 0f), 0.8f, White);
+                float reach = W * 0.5f - 3.3f;
+                var mover = holder.AddComponent<MovingPlatform>();
+                mover.pointA = holder.transform.position - r.right * (reach * (i % 2 == 0 ? 1f : -1f));
+                mover.pointB = holder.transform.position + r.right * (reach * (i % 2 == 0 ? 1f : -1f));
+                mover.period = 3.2f + i * 0.4f;
+            }
+        }
+
+        // C5. A narrow beam with two low sweepers turning across it.
+        static void ObsC5CrossBeam(Transform r, float L, float W)
+        {
+            var holder = new GameObject("Cross Beam");
+            holder.transform.SetParent(r, false);
+            var box = holder.AddComponent<BoxCollider>();
+            box.size = new Vector3(1.0f, 1.2f, L);
+            P(holder.transform, PrimitiveType.Capsule, "Beam", new Vector3(0f, -0.05f, 0f), new Vector3(1.1f, L * 0.5f, 1.3f), Teal, "quilt", false, new Vector3(90f, 0f, 0f));
+            PylonAt(r, 0f, -L * 0.5f + 1f); PylonAt(r, 0f, 0f); PylonAt(r, 0f, L * 0.5f - 1f);
+            for (int k = 0; k < 2; k++)
+            {
+                var sweeper = new GameObject("Beam Sweeper " + k);
+                sweeper.transform.SetParent(r, false);
+                sweeper.transform.localPosition = new Vector3(0f, Top + 0.5f, k == 0 ? -2.6f : 2.6f);
+                var arm = P(sweeper.transform, PrimitiveType.Capsule, "Arm", Vector3.zero, new Vector3(0.8f, 2.4f, 0.8f), k == 0 ? Orange : Pink, "quilt", false, new Vector3(0f, 0f, 90f));
+                var spin = sweeper.AddComponent<RotatingBar>();
+                spin.degreesPerSecond = k == 0 ? 85f : -85f;
+                spin.hitBoxes = new[] { arm.transform };
+            }
+        }
+
+        // D1. Small trampoline pads over open water: bounce from one to the next.
+        static void ObsD1BounceChain(Transform r, float L, float W)
+        {
+            Color[] colors = { Teal, Pink, Yellow, Orange };
+            for (int i = 0; i < 4; i++)
+            {
+                float z = -L * 0.5f + 2.2f + i * 4.2f;
+                float x = (i % 2 == 0 ? -1f : 1f) * 1.6f;
+                var holder = new GameObject("Bounce Pad " + i);
+                holder.transform.SetParent(r, false);
+                holder.transform.localPosition = new Vector3(x, 0f, z);
+                P(holder.transform, PrimitiveType.Cylinder, "Pad", Vector3.zero, new Vector3(3.4f, 0.6f, 3.4f), colors[i]);
+                P(holder.transform, PrimitiveType.Cylinder, "Target", new Vector3(0f, 0.62f, 0f), new Vector3(2.0f, 0.03f, 2.0f), White, "plain", false);
+                var trigger = new GameObject("Bounce Trigger");
+                trigger.transform.SetParent(holder.transform, false);
+                trigger.transform.localPosition = new Vector3(0f, 0.75f, 0f);
+                var box = trigger.AddComponent<BoxCollider>();
+                box.size = new Vector3(2.8f, 0.3f, 2.8f);
+                box.isTrigger = true;
+                trigger.AddComponent<BouncePad>().bounceVelocity = 16.5f;
+                PylonAt(r, x, z);
+            }
+        }
+
+        // D2. Windmills: big arms turning like clock hands, across the lane.
+        static void ObsD2Windmills(Transform r, float L, float W)
+        {
+            Platform(r, "Deck", 0f, 0f, W, L);
+            Rails(r, L, W);
+            for (int k = 0; k < 2; k++)
+            {
+                var hub = new GameObject("Windmill " + k);
+                hub.transform.SetParent(r, false);
+                hub.transform.localPosition = new Vector3(0f, Top + 3.2f, k == 0 ? -3.2f : 3.2f);
+                var a = P(hub.transform, PrimitiveType.Capsule, "Arm A", Vector3.zero, new Vector3(0.7f, 3.4f, 0.7f), k == 0 ? Red : Blue, "quilt", false, new Vector3(0f, 0f, 90f));
+                var b = P(hub.transform, PrimitiveType.Capsule, "Arm B", Vector3.zero, new Vector3(0.7f, 3.4f, 0.7f), k == 0 ? Yellow : Pink, "quilt", false);
+                P(hub.transform, PrimitiveType.Sphere, "Hub", Vector3.zero, Vector3.one * 1.4f, White, "plain", false);
+                Tube(r, new Vector3(0f, Top, hub.transform.localPosition.z), new Vector3(0f, Top + 3.0f, hub.transform.localPosition.z), 0.6f, Orange);
+                var spin = hub.AddComponent<RotatingBar>();
+                spin.rotationAxis = r.forward;
+                spin.degreesPerSecond = k == 0 ? 55f : -70f;
+                spin.hitBoxes = new[] { a.transform, b.transform };
+            }
+        }
+
+        // D3. Two ferries going opposite ways across two gaps.
+        static void ObsD3TwinFerries(Transform r, float L, float W)
+        {
+            Platform(r, "Middle Deck", 0f, 0f, W, 2.6f);
+            for (int k = 0; k < 2; k++)
+            {
+                float side = k == 0 ? -1f : 1f;
+                float zStart = side * (L * 0.5f - 2.6f), zEnd = side * 2.4f; // between the outer end and the middle deck
+                var holder = new GameObject("Ferry " + k);
+                holder.transform.SetParent(r, false);
+                holder.transform.localPosition = new Vector3(0f, 0f, zStart);
+                var box = holder.AddComponent<BoxCollider>();
+                box.size = new Vector3(W - 2f, 1.2f, 4.4f);
+                P(holder.transform, PrimitiveType.Cube, "Ferry Deck", Vector3.zero, new Vector3(W - 2f, 1.2f, 4.4f), k == 0 ? Orange : Teal, "plain", false);
+                P(holder.transform, PrimitiveType.Cube, "Floor", new Vector3(0f, 0.62f, 0f), new Vector3(W - 3.2f, 0.05f, 3.2f), Yellow, "plain", false);
+                var platform = holder.AddComponent<MovingPlatform>();
+                platform.pointA = r.TransformPoint(new Vector3(0f, 0f, zStart));
+                platform.pointB = r.TransformPoint(new Vector3(0f, 0f, zEnd));
+                platform.period = k == 0 ? 5.2f : 6.4f;
+            }
+            Pylon(r.TransformPoint(new Vector3(2f, 0f, 0f))); Pylon(r.TransformPoint(new Vector3(-2f, 0f, 0f)));
+        }
+
+        // D4. Small crumbling stones spaced just far enough apart that you must keep moving.
+        static void ObsD4HopStones(Transform r, float L, float W)
+        {
+            Color[] colors = { Pink, Yellow, Teal, Orange, Green };
+            for (int i = 0; i < 5; i++)
+            {
+                float z = -L * 0.5f + 1.4f + i * 2.9f;
+                float x = Mathf.Sin(i * 1.9f) * 2.8f;
+                var holder = new GameObject("Hop Stone " + i);
+                holder.transform.SetParent(r, false);
+                holder.transform.localPosition = new Vector3(x, 0f, z);
+                P(holder.transform, PrimitiveType.Cylinder, "Stone", Vector3.zero, new Vector3(2.2f, 0.6f, 2.2f), colors[i]);
+                var crumble = holder.AddComponent<CrumblingPlatform>();
+                crumble.standSeconds = 0.35f;
+                PylonAt(r, x, z);
+            }
+        }
+
+        // D5. A narrow soft bridge with swinging balls across it.
+        static void ObsD5PendulumBridge(Transform r, float L, float W)
+        {
+            for (int i = 0; i < 6; i++)
+                Soft(r, "Bridge Plank " + i, 0f, -L * 0.5f + 1f + i * 2f, W, 1.9f, Top, i % 2 == 0 ? Pink : Yellow, White, 0.5f, 18f, 0.9f, 0.08f);
+            for (int i = 0; i < 2; i++) PylonAt(r, 0f, -L * 0.5f + 1f + i * 10f);
+            for (int i = 0; i < 2; i++)
+            {
+                float z = -2.6f + i * 5.2f;
+                var pivot = new GameObject("Bridge Pendulum " + i);
+                pivot.transform.SetParent(r, false);
+                pivot.transform.localPosition = new Vector3(0f, Top + 6.2f, z);
+                P(pivot.transform, PrimitiveType.Cylinder, "Rope", new Vector3(0f, -2.1f, 0f), new Vector3(0.15f, 2.1f, 0.15f), new Color(0.9f, 0.85f, 0.65f), "plain", false);
+                var ball = P(pivot.transform, PrimitiveType.Sphere, "Swinging Ball", new Vector3(0f, -5.0f, 0f), Vector3.one * 2.4f, i == 0 ? Red : Blue, "quilt", false);
+                var swing = pivot.AddComponent<Pendulum>();
+                swing.ball = ball.transform; swing.ballRadius = 1.2f; swing.maxAngle = 52f; swing.period = 2.2f; swing.phase = i * Mathf.PI;
+                for (int side = -1; side <= 1; side += 2)
+                    Tube(r, new Vector3(side * 2.6f, Top, z), new Vector3(side * 2.6f, Top + 6.6f, z), 0.8f, Orange);
+                Tube(r, new Vector3(-2.6f, Top + 6.5f, z), new Vector3(2.6f, Top + 6.5f, z), 0.8f, Orange);
             }
         }
 
@@ -812,7 +1087,7 @@ namespace Badeland.EditorTools
         static void BuildFish(FishSpecies cod, FishSpecies salmon, FishSpecies clown)
         {
             // Fish leap across the route from the open water beside it.
-            string[] where = { "A1 Zigzag pads", "A4 Springy mattresses", "B2 Log gauntlet", "2 Wobble bridge", "4 Bouncing pillars", "6 Floating logs", "9 Swinging balls", "12 Rotating padded arms", "14 Final bridge" };
+            string[] where = { "C2 Pendulum corridor", "D2 Windmills", "A1 Zigzag pads", "A4 Springy mattresses", "B2 Log gauntlet", "2 Wobble bridge", "4 Bouncing pillars", "6 Floating logs", "9 Swinging balls", "12 Rotating padded arms", "14 Final bridge" };
             var pools = new[] { new[] { cod, salmon }, new[] { salmon, clown, cod }, new[] { clown, cod } };
             int k = 0;
             foreach (var name in where)
@@ -823,7 +1098,7 @@ namespace Badeland.EditorTools
                 Vector3 side = Vector3.Dot(s.center - _layout.courseCenter, right) >= 0f ? right : -right;
                 float half = Mathf.Max(s.width, 8f) * 0.5f;
                 float offset = half + 3.5f;
-                Vector3 zone = s.center + side * offset + Vector3.up * 0.3f;
+                Vector3 zone = new Vector3(s.center.x, 0.3f, s.center.z) + side * offset;
                 Vector3 across = -side;
                 Vector3 size = new Vector3(Mathf.Abs(s.direction.x) * 10f + Mathf.Abs(s.direction.z), 0f, Mathf.Abs(s.direction.z) * 10f + Mathf.Abs(s.direction.x));
                 S3SceneBuilder.FishArea("Fish Area " + (k + 1), pools[k % pools.Length], zone, size, Mathf.Atan2(across.x, across.z) * Mathf.Rad2Deg, 15f,
@@ -850,12 +1125,16 @@ namespace Badeland.EditorTools
             Corner("arms-corner", "12 Rotating padded arms", 3.9f, -7.2f, Top, 20f);
             Corner("sweeper-corner", "A2 Sweeper deck", -3.9f, 5.4f, Top, 180f);
             Corner("ballrun-corner", "B3 Ball run", 3.9f, 5.4f, Top, 200f);
+            Corner("cross-corner", "C1 Rotating cross", -3.9f, 5.6f, Top, 180f);
+            Corner("windmill-corner", "D2 Windmills", 3.9f, -5.6f, Top, 20f);
             Corner("slide-top", "B4 Steep slide", 2.6f, -1.0f, Top + 3.8f, 90f);
 
             // And on little islets floating in the water between the lanes (swim there, then back).
             Islet("islet-north", new Vector3(-5f, 0f, 45f));
             Islet("islet-middle", new Vector3(-15f, 0f, 23f));
             Islet("islet-south", new Vector3(10f, 0f, 2f));
+            Islet("islet-top-north", new Vector3(-10f, 0f, 133f));
+            Islet("islet-top-middle", new Vector3(10f, 0f, 111f));
             Islet("islet-far-north", new Vector3(-15f, 0f, 89f));
             Islet("islet-far-east", new Vector3(40f, 0f, 90f));
         }

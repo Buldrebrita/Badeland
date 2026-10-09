@@ -147,6 +147,13 @@ namespace Badeland.CameraSystem
                 position += Random.insideUnitSphere * (_shakeMagnitude * fade);
             }
 
+            // Dizzy after a hit: the view rolls from side to side and wobbles a little, fading out over three seconds.
+            if (player != null && player.Dizziness > 0f)
+            {
+                float d = player.Dizziness;
+                rot = rot * Quaternion.Euler(Mathf.Sin(Time.time * 5.3f) * 2.5f * d, 0f, Mathf.Sin(Time.time * 3.1f) * 11f * d);
+            }
+
             transform.SetPositionAndRotation(position, rot);
         }
 

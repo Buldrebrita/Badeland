@@ -44,7 +44,7 @@ namespace Badeland.World
                         Vector3 d = pos - centers[s];
                         float along = Vector3.Dot(d, directions[s]);
                         float across = Vector3.Dot(d, Vector3.Cross(Vector3.up, directions[s]));
-                        if (Mathf.Abs(along) <= halfLengths[s] + 0.5f && Mathf.Abs(across) <= halfWidths[s] + 0.5f && pos.y > 0.4f)
+                        if (Mathf.Abs(along) <= halfLengths[s] + 0.5f && Mathf.Abs(across) <= halfWidths[s] + 0.5f && pos.y > centers[s].y - 0.5f)
                         {
                             progress = s;
                             break;
@@ -52,7 +52,8 @@ namespace Badeland.World
                     }
                 _progress[p] = progress;
 
-                if (p.IsSwimming)
+                // In the water, or down on a little islet: after a couple of seconds you are put back on the course.
+                if (p.IsSwimming || pos.y < 1.6f)
                 {
                     _swimming.TryGetValue(p, out float t);
                     t += Time.deltaTime;

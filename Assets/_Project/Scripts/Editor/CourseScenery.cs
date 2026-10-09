@@ -421,13 +421,13 @@ namespace Badeland.EditorTools
             {
                 float x = side < 0f ? -105f : 95f;
                 var rng = new System.Random(side > 0 ? 1 : 2);
-                Prim(root, PrimitiveType.Cube, "Breakwater", new Vector3(x, 0.8f, 45f), new Vector3(10f, 3.6f, 170f), new Color(0.6f, 0.58f, 0.58f), "stone", true);
+                Prim(root, PrimitiveType.Cube, "Breakwater", new Vector3(x, 0.8f, 70f), new Vector3(10f, 3.6f, 220f), new Color(0.6f, 0.58f, 0.58f), "stone", true);
                 for (int i = 0; i < 40; i++)
-                    Prim(root, PrimitiveType.Sphere, "Boulder", new Vector3(x + F(rng, -7f, 7f), F(rng, 0f, 1.5f), F(rng, -35f, 125f)), Vector3.one * F(rng, 2f, 4.5f), new Color(0.5f, 0.48f, 0.5f), "stone");
+                    Prim(root, PrimitiveType.Sphere, "Boulder", new Vector3(x + F(rng, -7f, 7f), F(rng, 0f, 1.5f), F(rng, -35f, 175f)), Vector3.one * F(rng, 2f, 4.5f), new Color(0.5f, 0.48f, 0.5f), "stone");
             }
 
             // The lighthouse at the end of the east breakwater.
-            Vector3 p = new Vector3(95f, 2.6f, 125f);
+            Vector3 p = new Vector3(95f, 2.6f, 172f);
             for (int i = 0; i < 5; i++)
                 Prim(root, PrimitiveType.Cylinder, "Lighthouse", p + new Vector3(0f, 3f + i * 6f, 0f), new Vector3(7f - i * 0.7f, 3f, 7f - i * 0.7f), i % 2 == 0 ? Color.white : new Color(0.9f, 0.2f, 0.2f), "plain", true);
             Prim(root, PrimitiveType.Cylinder, "Gallery", p + new Vector3(0f, 31.5f, 0f), new Vector3(6f, 0.4f, 6f), new Color(0.2f, 0.2f, 0.25f));

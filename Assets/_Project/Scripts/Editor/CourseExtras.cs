@@ -234,6 +234,7 @@ namespace Badeland.EditorTools
         static void BuildMonster(Context c)
         {
             Vector3 A = c.layout.arenaCenter; // the finish platform: the monster rises from the water beside it
+            A.y = 0f;                         // (the platform floats high above the sea, but the monster comes from the water)
 
             // ---- Pieces used by the attacks (switched off until used).
             var telegraph = S3SceneBuilder.Cyl("Telegraph Template", new Vector3(0f, -50f, 0f), new Vector3(1f, 0.02f, 1f), Color.red);
@@ -328,9 +329,9 @@ namespace Badeland.EditorTools
             var encounterObject = new GameObject("Monster Encounter");
             var encounter = encounterObject.AddComponent<MonsterEncounter>();
             encounter.tracker = c.tracker;
-            encounter.platformCenter = A;
+            encounter.platformCenter = c.layout.arenaCenter;
             encounter.platformSize = new Vector3(c.layout.arenaSize.x, 1f, c.layout.arenaSize.z);
-            encounter.platformTopY = 0.6f;
+            encounter.platformTopY = c.layout.arenaCenter.y + 0.6f;
             encounter.celebrationSeconds = 3f;
             encounter.warningSeconds = 7f;
             encounter.sun = c.sun;
@@ -398,11 +399,11 @@ namespace Badeland.EditorTools
             var beacons = new List<Renderer>();
             foreach (var spot in spots)
             {
-                var pole = S3SceneBuilder.Cyl("Alarm Pole", new Vector3(spot.x, 0.6f + 1.9f, spot.z), new Vector3(0.3f, 1.9f, 0.3f), new Color(0.85f, 0.85f, 0.9f));
+                var pole = S3SceneBuilder.Cyl("Alarm Pole", new Vector3(spot.x, spot.y + 0.6f + 1.9f, spot.z), new Vector3(0.3f, 1.9f, 0.3f), new Color(0.85f, 0.85f, 0.9f));
                 Object.DestroyImmediate(pole.GetComponent<Collider>());
                 pole.transform.SetParent(alarmObject.transform, true);
 
-                var beacon = S3SceneBuilder.Ball("Alarm Beacon", new Vector3(spot.x, 0.6f + 4.3f, spot.z), 1f, new Color(0.25f, 0.02f, 0.02f), false);
+                var beacon = S3SceneBuilder.Ball("Alarm Beacon", new Vector3(spot.x, spot.y + 0.6f + 4.3f, spot.z), 1f, new Color(0.25f, 0.02f, 0.02f), false);
                 beacon.transform.SetParent(alarmObject.transform, true);
                 beacons.Add(beacon.GetComponent<Renderer>());
 
@@ -444,7 +445,7 @@ namespace Badeland.EditorTools
         // One straight run of railing: three white bars, red posts, and an invisible solid wall that is too tall to jump.
         static void Rail(Transform root, List<Collider> colliders, Vector3 a, Vector3 b)
         {
-            const float deckTop = 0.6f;
+            float deckTop = a.y + 0.6f;
             Vector3 mid = (a + b) * 0.5f;
             float length = Vector3.Distance(a, b);
             bool alongX = Mathf.Abs(a.z - b.z) < 0.01f;

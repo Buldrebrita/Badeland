@@ -40,6 +40,11 @@ namespace Badeland.Player
         public static IReadOnlyList<PlayerController> All => AllPlayers;
 
         float _knockTimer;
+        float _dizzy;
+
+        /// <summary>1 right after being hit, fading to 0 over three seconds. The player is slower and the camera sways while it is above 0.</summary>
+        public float Dizziness => Mathf.Clamp01(_dizzy / DizzySeconds);
+        public const float DizzySeconds = 3f;
 
         /// <summary>False for other players' avatars in an online game. They are moved by the network, not by this script.</summary>
         public bool IsLocal { get; set; } = true;
@@ -109,17 +114,19 @@ namespace Badeland.Player
                 return;
             }
             _knockTimer -= dt;
+            _dizzy = Mathf.Max(0f, _dizzy - dt);
+            float dizzySlow = _dizzy > 0f ? 0.6f : 1f; // dizzy: slower
 
             UpdateWaterState(dt);
 
             if (IsSwimming)
             {
-                UpdateHorizontal(dt, settings.swimSpeed, settings.swimAcceleration, settings.swimDeceleration, 1f);
+                UpdateHorizontal(dt, settings.swimSpeed * dizzySlow, settings.swimAcceleration, settings.swimDeceleration, 1f);
                 UpdateSwimVertical(dt);
             }
             else
             {
-                UpdateHorizontal(dt, settings.maxSpeed, settings.acceleration, settings.deceleration,
+                UpdateHorizontal(dt, settings.maxSpeed * dizzySlow, settings.acceleration, settings.deceleration,
                     IsGrounded ? 1f : settings.airControl);
                 UpdateVertical(dt);
             }
@@ -354,6 +361,7 @@ namespace Badeland.Player
         {
             if (_knockTimer > 0f || Invulnerable || IsDead) return;
             _knockTimer = 0.6f;
+            _dizzy = DizzySeconds;
             horizontalVelocity.y = 0f;
             _horizontalVelocity = horizontalVelocity;
             Launch(upwardVelocity);
