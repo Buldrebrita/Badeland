@@ -67,6 +67,7 @@ namespace Badeland.EditorTools
                 case "quilt": GrayboxMaterials.TintQuilted(go, color); break;
                 case "wood": GrayboxMaterials.TintWood(go, color); break;
                 case "stone": GrayboxMaterials.TintStone(go, color); break;
+                case "glass": GrayboxMaterials.TintWater(go, color); break;
                 default: GrayboxMaterials.Tint(go, color); break;
             }
             return go;

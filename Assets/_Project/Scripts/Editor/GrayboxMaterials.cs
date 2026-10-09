@@ -86,7 +86,7 @@ namespace Badeland.EditorTools
         static Texture2D DetailTexture(string kind)
         {
             string folder = "Assets/_Project/Art/Textures";
-            string path = folder + "/Detail_" + kind + "_v1.png";
+            string path = folder + "/Detail_" + kind + "_v2.png";
             Directory.CreateDirectory(folder);
 
             if (!File.Exists(path))
@@ -108,9 +108,9 @@ namespace Badeland.EditorTools
                             case "quilt":
                             {
                                 // Pillow baffles: 4 x 4 cushions per tile, bright in the middle, dark in the seams.
-                                float fu = Mathf.Repeat(u * 4f, 1f), fv = Mathf.Repeat(v * 4f, 1f);
+                                float fu = Mathf.Repeat(u * 2f, 1f), fv = Mathf.Repeat(v * 2f, 1f);
                                 float pillow = Mathf.Sin(Mathf.PI * fu) * Mathf.Sin(Mathf.PI * fv);
-                                value = Mathf.Lerp(0.62f, 1f, Mathf.Pow(pillow, 0.6f)) - 0.03f * hash;
+                                value = Mathf.Lerp(0.8f, 1f, Mathf.Pow(pillow, 0.5f)) - 0.02f * hash;
                                 break;
                             }
                             case "stone":

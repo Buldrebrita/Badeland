@@ -1,14 +1,14 @@
-# Hinderløypa (the waterpark course)
+# The obstacle course
 
-Bygd av `Badeland > Create S3 Course Test Scene` (og S4 for nett). Éi samanhengande, flytande løype i ein stor bue over
-ope vatn: start i vest, mål i aust. Ingen sideløyper.
+Built by `Badeland > Create S3 Course Test Scene` (and S4 for online). ONE continuous inflatable course on the sea:
+the route snakes from the start platform (north-west) east, south, west, south and east again to the finish platform
+near the beach. Obstacles are joined end to end; square corner pads where the route turns; railings on the wide parts.
 
-Koden: `InflatableCourse.cs` (løypa og dei 15 hindera), `CourseScenery.cs` (strand, marina, publikum, by, fyr, pariserhjul),
-`MeshKit.cs` (tunnelar, ringar, humpar), `CourseExtras.cs` (monsteret, alarm, felle/skjult rom, sklie, utsjånad).
-Nye skript: `SoftPlatform`, `RollingLog`, `Cheerer`, `RectBounds`, `HiddenChest`.
+1 Start platform, 2 Wobble bridge, 3 Curved tunnel, 4 Bouncing pillars, 5 Climbing wall, 6 Floating logs,
+7 Rotating platform, 8 Trampoline, 9 Swinging balls, 10 Slide, 11 Balance section, 12 Rotating padded arms,
+13 Arch maze, 14 Final bridge, 15 Finish platform (the monster appears here).
 
-1 Flytande puter, 2 Balansebom, 3 Store trappetrinn, 4 Humpete parti, 5 Klatrevegg, 6 Tunnel, 7 Hinderbollar,
-8 Sprettemadrassar, 9 Rullande stokkar, 10 Nettklatring, 11 Bølgjeputer, 12 Sveipetunnel, 13 Sikksakk, 14 Opp og over,
-15 Finale (klatrebakke + sklie). Mellom hindera ligg runde flyteputer. Flaggportar ved 4 av dei + mål.
-Hoppande fisk, monsteret (på målplattforma), alarm/rekkverk, felle + skjult rom og skattekistene er behaldne.
-Rundar: 1 (kan gjerast om til fleire seinare).
+Code: `InflatableCourse.cs` (route and obstacles), `CourseScenery.cs` (beach, marina, crowds, town, lighthouse, ferris wheel),
+`MeshKit.cs`, `CourseExtras.cs` (monster, alarm, trap, slide, look). Scripts: `SoftPlatform`, `RollingLog`, `SpinningPlatform`,
+`Pendulum`, `CourseRespawn`, `Cheerer`, `RectBounds`, `HiddenChest`.
+Fall in the water: you are put back at the start of the obstacle you fell from (after ~2 s of swimming).

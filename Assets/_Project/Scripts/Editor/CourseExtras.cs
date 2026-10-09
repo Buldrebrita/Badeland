@@ -255,7 +255,7 @@ namespace Badeland.EditorTools
 
             // ---- The head. It faces its local +Z, and sits below the sea until the strike.
             var head = new GameObject("Monster Head");
-            head.transform.position = A + new Vector3(-30f, -30f, 16f);
+            head.transform.position = A + new Vector3(32f, -30f, -16f);
 
             Part(head.transform, PrimitiveType.Sphere, "Skull", new Vector3(0f, 0f, 0f), Vector3.one * 12f, skin);
             Part(head.transform, PrimitiveType.Sphere, "Brow", new Vector3(0f, 3.4f, 3.2f), new Vector3(9f, 2.2f, 5f), skin * 0.8f);
@@ -301,21 +301,21 @@ namespace Badeland.EditorTools
 
             // ---- The body: big humps that rise out of the sea with the head.
             var body = new GameObject("Monster Body");
-            body.transform.position = A + new Vector3(-75f, -30f, 30f);
+            body.transform.position = A + new Vector3(80f, -30f, -30f);
             Part(body.transform, PrimitiveType.Sphere, "Back", Vector3.zero, Vector3.one * 34f, teal);
             Part(body.transform, PrimitiveType.Sphere, "Hump", new Vector3(-14f, -3f, 13f), Vector3.one * 24f, teal * 0.9f);
             Part(body.transform, PrimitiveType.Sphere, "Hump", new Vector3(-12f, -5f, -15f), Vector3.one * 20f, teal * 0.8f);
 
             // ---- Positions: where the neck comes out of the sea, where the head hangs, where the tentacles come out.
             var neckBase = new GameObject("Neck Base").transform;
-            neckBase.position = A + new Vector3(-42f, -3f, 14f);
+            neckBase.position = A + new Vector3(46f, -3f, -8f);
             var lurk = new GameObject("Head Lurk Point").transform;
-            lurk.position = A + new Vector3(-20f, 9f, 18f);
+            lurk.position = A + new Vector3(26f, 9f, -12f);
 
             Vector3[] anchors =
             {
-                A + new Vector3(-26f, -1f, 6f), A + new Vector3(-26f, -1f, -8f), A + new Vector3(-26f, -1f, -20f),
-                A + new Vector3(-8f, -1f, 22f), A + new Vector3(10f, -1f, 22f),
+                A + new Vector3(22f, -1f, 6f), A + new Vector3(22f, -1f, -6f), A + new Vector3(18f, -1f, -18f),
+                A + new Vector3(4f, -1f, -20f), A + new Vector3(-8f, -1f, -20f),
             };
             var bases = new Transform[anchors.Length];
             for (int i = 0; i < anchors.Length; i++)

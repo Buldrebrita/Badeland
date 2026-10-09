@@ -98,13 +98,31 @@ namespace Badeland.EditorTools
             tracker.checkpoints = layout.gates;
             tracker.totalLaps = 1;
 
+            // Fall in the water and you are put back at the start of the obstacle you fell from.
+            var respawn = new GameObject("Course Respawn").AddComponent<CourseRespawn>();
+            int sectionCount = layout.sections.Count;
+            respawn.centers = new Vector3[sectionCount];
+            respawn.directions = new Vector3[sectionCount];
+            respawn.halfLengths = new float[sectionCount];
+            respawn.halfWidths = new float[sectionCount];
+            respawn.spawnPoints = new Vector3[sectionCount];
+            for (int i = 0; i < sectionCount; i++)
+            {
+                var section = layout.sections[i];
+                respawn.centers[i] = section.center;
+                respawn.directions[i] = section.direction;
+                respawn.halfLengths[i] = section.length * 0.5f;
+                respawn.halfWidths[i] = section.width * 0.5f;
+                respawn.spawnPoints[i] = section.start + section.direction * 1.6f + Vector3.up * 1.8f;
+            }
+
             // ---- The beach, the marina, the crowds and the town behind them.
             CourseScenery.Build(layout);
 
             // Nobody can wander off to the beach or the town: the play area is the water and the course.
             var bounds = new GameObject("Play Area").AddComponent<RectBounds>();
-            bounds.minX = -layout.radius - 22f; bounds.maxX = layout.radius + 22f;
-            bounds.minZ = -28f; bounds.maxZ = layout.radius + 26f;
+            bounds.minX = layout.areaMin.x; bounds.maxX = layout.areaMax.x;
+            bounds.minZ = layout.areaMin.y; bounds.maxZ = layout.areaMax.y;
 
             // ---- The trap and secret room, the monster and its alarm, and the look.
             CourseExtras.Build(new CourseExtras.Context
@@ -122,7 +140,7 @@ namespace Badeland.EditorTools
             {
                 player = CreatePlayerObject(settings);
                 player.transform.position = layout.startSpawn;
-                player.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+                player.transform.rotation = Quaternion.Euler(0f, 90f, 0f); // facing east, towards the first obstacle
             }
 
             // ---- Camera rig

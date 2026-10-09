@@ -5,186 +5,166 @@ using UnityEngine;
 namespace Badeland.EditorTools
 {
     /// <summary>
-    /// The waterpark obstacle course: ONE big, continuous inflatable course floating on open water. It follows a wide
-    /// arc from the start platform in the west, out over the water, to the finish platform in the east. The player
-    /// runs through 15 different obstacles, one after the other, joined by round float pads. Nothing runs beside it.
+    /// The waterpark obstacle course: ONE long, continuous inflatable course floating on the sea. It winds in a snake
+    /// from the start platform (north-west) back and forth to the finish platform (near the beach). Every obstacle is
+    /// joined directly to the next, with square corner pads where the route turns. There is only one route.
     /// The finish platform is also where the monster appears.
     /// </summary>
     public static class InflatableCourse
     {
+        public class Section
+        {
+            public string name;
+            public Vector3 center, direction;
+            public float length, width;
+            public Vector3 start;
+        }
+
         public class Layout
         {
-            public float radius;
+            public List<Section> sections = new List<Section>();
             public Checkpoint[] gates;
             public Vector3 startSpawn;
             public Vector3 startCenter, startSize;
             public Vector3 arenaCenter, arenaSize;       // the finish platform
-            public GameObject trapPanel;                  // a float pad that gives way under the suspicious duck
+            public Vector3 courseCenter;                  // the middle of the whole structure
+            public Vector2 areaMin, areaMax;              // the play area (x, z)
+            public GameObject trapPanel;                  // a square corner pad that gives way under the suspicious duck
             public Vector3 trapReturn;
-            public float widest = 12f;
         }
 
-        // The colours of the inflatables.
-        static readonly Color Blue = new Color(0.15f, 0.45f, 0.95f);
-        static readonly Color Orange = new Color(1f, 0.55f, 0.1f);
+        // The inflatables' colours (after the reference picture: purple floors, pink edges, yellow and green tubes).
+        static readonly Color Purple = new Color(0.58f, 0.4f, 0.88f);
+        static readonly Color Pink = new Color(1f, 0.38f, 0.68f);
         static readonly Color Yellow = new Color(1f, 0.85f, 0.15f);
-        static readonly Color Pink = new Color(1f, 0.4f, 0.7f);
-        static readonly Color Green = new Color(0.3f, 0.8f, 0.35f);
+        static readonly Color Green = new Color(0.35f, 0.82f, 0.3f);
+        static readonly Color Orange = new Color(1f, 0.55f, 0.1f);
+        static readonly Color Blue = new Color(0.15f, 0.5f, 0.95f);
         static readonly Color Teal = new Color(0.1f, 0.78f, 0.8f);
-        static readonly Color Purple = new Color(0.6f, 0.4f, 0.95f);
         static readonly Color Red = new Color(0.95f, 0.3f, 0.3f);
         static readonly Color White = new Color(0.97f, 0.97f, 1f);
         static readonly Color Foamy = new Color(0.92f, 0.98f, 1f);
+        static readonly Color Glass = new Color(0.3f, 0.65f, 1f, 0.35f);
 
-        const float Top = 0.6f;   // the top of every deck, above the sea
+        const float Top = 0.6f;     // the top of every deck, above the sea
+        const float Width = 10f;    // how wide the main route is
 
-        static float _radius;
+        static Vector3 _pos, _dir;
+        static Layout _layout;
         static Mesh _ringMesh;
+        static int _railColor;
 
         // ------------------------------------------------------------------ the route
-
-        struct Spec
-        {
-            public string name;
-            public float length, width;
-            public System.Action<Transform, float, float> build;
-            public Spec(string name, float length, float width, System.Action<Transform, float, float> build)
-            { this.name = name; this.length = length; this.width = width; this.build = build; }
-        }
-
-        // Where the route is on the arc, s metres from the start (the west end).
-        static Vector3 PathPos(float s)
-        {
-            float theta = Mathf.PI - s / _radius;
-            return new Vector3(_radius * Mathf.Cos(theta), 0f, _radius * Mathf.Sin(theta));
-        }
-
-        static Vector3 PathDir(float s)
-        {
-            float theta = Mathf.PI - s / _radius;
-            return new Vector3(Mathf.Sin(theta), 0f, -Mathf.Cos(theta));
-        }
-
-        static float Yaw(Vector3 dir) => Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
 
         public static Layout Build(FishSpecies cod, FishSpecies salmon, FishSpecies clown)
         {
             MeshKit.Reset();
             _ringMesh = MeshKit.Torus(3.0f, 0.3f);
-
-            var specs = new List<Spec>
-            {
-                new Spec("1 Float pads",          20f, 12f, Obs1Pads),
-                new Spec("2 Balance beam",        22f,  1.4f, Obs2Beam),
-                new Spec("3 Big stairs",          28f,  9f, Obs3Stairs),
-                new Spec("4 Bump field",          20f, 10f, Obs4Bumps),
-                new Spec("5 Climbing wall",       14f,  9f, Obs5Wall),
-                new Spec("6 Tunnel",              16f,  7.4f, Obs6Tunnel),
-                new Spec("7 Giant balls",         22f, 12f, Obs7Balls),
-                new Spec("8 Bouncy mattresses",   20f,  9f, Obs8Mattresses),
-                new Spec("9 Rolling logs",        16f,  8f, Obs9Logs),
-                new Spec("10 Net climb",          14f,  9f, Obs10Net),
-                new Spec("11 Wave cushions",      24f, 10f, Obs11Waves),
-                new Spec("12 Sweeper tunnel",     18f,  7.4f, Obs12Sweepers),
-                new Spec("13 Zig-zag",            26f, 12f, Obs13Zigzag),
-                new Spec("14 Up and over",        20f,  9f, Obs14UpAndOver),
-                new Spec("15 Finale",             14f,  9f, Obs15Finale),
-            };
-
-            // How long the whole route is: pad at the start, then each obstacle with a float pad between, the slide, the swim to the finish.
-            const float hubRadius = 3.0f, startMargin = 4f, slideLength = 34f, swim = 13f;
-            float total = startMargin + hubRadius;
-            foreach (var spec in specs) total += spec.length + 2f * hubRadius;
-            total -= hubRadius;               // no pad after the finale
-            total += slideLength + swim;
-            _radius = total / Mathf.PI;
-
-            var layout = new Layout { radius = _radius };
-
-            // ---- Start and finish platforms (big, flat, on the beach side of the water).
-            layout.startCenter = new Vector3(-_radius, 0f, -11f);
-            layout.startSize = new Vector3(26f, 1.2f, 24f);
-            S3SceneBuilder.Deck("Start Platform", layout.startCenter, layout.startSize);
-
-            layout.arenaCenter = new Vector3(_radius, 0f, -12f);
-            layout.arenaSize = new Vector3(34f, 1.2f, 26f);
-            S3SceneBuilder.Deck("Finish Platform", layout.arenaCenter, layout.arenaSize);
-
-            layout.startSpawn = new Vector3(-_radius, 1.8f, -8f);
-
-            // ---- Walk along the route placing float pads and obstacles.
+            _layout = new Layout();
+            var L = _layout;
             var gates = new List<Checkpoint>();
-            var obstacleCenters = new List<float>();
-            var obstacleWidths = new List<float>();
-            float s = startMargin;
-            var hubPositions = new List<Vector3>();
-            for (int i = 0; i < specs.Count; i++)
-            {
-                var spec = specs[i];
 
-                // The float pad in front of this obstacle.
-                Vector3 hub = PathPos(s);
-                var hubObject = Hub(hub, "Float Pad " + i, i % 2 == 0 ? Orange : Yellow, i == 10);
-                hubPositions.Add(hub);
-                if (i == 10) layout.trapPanel = hubObject; // under the suspicious duck, just before obstacle 11
-                if (i == 3 || i == 6 || i == 9 || i == 12)
-                    gates.Add(S3SceneBuilder.Gate("Checkpoint " + gates.Count, hub, Yaw(PathDir(s)), Yellow, 14f));
+            Vector3 east = Vector3.right, south = Vector3.back, west = Vector3.left;
 
-                // The obstacle itself, laid along the route.
-                float start = s + hubRadius;
-                float mid = start + spec.length * 0.5f;
-                var root = new GameObject("Obstacle " + spec.name).transform;
-                root.position = PathPos(mid);
-                root.rotation = Quaternion.LookRotation(PathDir(mid));
-                spec.build(root, spec.length, spec.width);
+            // ---- 1. The start platform, in the north-west corner of the course.
+            L.startCenter = new Vector3(-53f, 0f, 56f);
+            L.startSize = new Vector3(24f, 1.2f, 18f);
+            StartPlatform(L.startCenter, east);
+            L.startSpawn = L.startCenter + new Vector3(-2f, 1.8f, 0f);
 
-                obstacleCenters.Add(mid);
-                obstacleWidths.Add(spec.width);
-                layout.widest = Mathf.Max(layout.widest, spec.width);
+            _pos = new Vector3(-41f, 0f, 56f);
+            _dir = east;
 
-                s = start + spec.length + hubRadius;
-            }
-            // s is now just after the finale; the slide starts at the end of its tower.
-            float slideStart = s - hubRadius;
-            BuildFinaleSlide(slideStart, slideLength);
+            // ---- The snake: three long legs joined by short connectors.
+            Place("2 Wobble bridge", 16f, 3.6f, Obs2WobbleBridge);
+            Place("3 Tunnel", 16f, 5.6f, Obs3Tunnel);
+            Place("4 Bouncing pillars", 14f, Width, Obs4Pillars);
+            Place("5 Climbing wall", 12f, Width, Obs5ClimbingWall);
+            gates.Add(MakeGate(L.sections.Count - 1));
+            var trapPad = Corner("Corner 1", south);                          // the trap door pad
+            Place("6 Floating logs", 12f, Width, Obs6Logs);
+            Corner("Corner 2", west);
 
-            // The finish line: across the north edge of the finish platform.
-            gates.Add(S3SceneBuilder.Gate("Finish line", new Vector3(_radius, 0f, 0.8f), 180f, new Color(0.2f, 0.9f, 0.3f), 18f));
-            Checkered(new Vector3(_radius, Top + 0.02f, -2.2f), 20);
-            layout.gates = gates.ToArray();
+            Place("7 Rotating platform", 16f, Width, Obs7RotatingDisc);
+            Place("8 Trampoline", 14f, Width, Obs8Trampoline);
+            gates.Add(MakeGate(L.sections.Count - 1));
+            Place("9 Swinging balls", 16f, Width, Obs9Pendulums);
+            Place("10 Slide", 14f, Width, Obs10Slide);
+            Corner("Corner 3", south);
+            Place("11 Balance section", 12f, 2.0f, Obs11Balance);
+            gates.Add(MakeGate(L.sections.Count - 1));
+            Corner("Corner 4", east);
 
-            // A float pad is the trap door. The player is dropped back there after the secret room.
-            layout.trapReturn = hubPositions[9] + new Vector3(0f, 1.8f, 0f);
+            Place("12 Rotating padded arms", 16f, Width, Obs12PaddedArms);
+            Place("13 Arch maze", 16f, Width, Obs13ArchMaze);
+            gates.Add(MakeGate(L.sections.Count - 1));
+            Place("14 Final bridge", 30f, 4.2f, Obs14FinalBridge);
 
-            // ---- Jumping fish beside obstacles 2, 4, 7, 9, 11 and 13, leaping across the route.
-            int[] fishAt = { 1, 3, 6, 8, 10, 12 };
-            var pools = new[] { new[] { cod, salmon }, new[] { salmon, clown, cod }, new[] { clown, cod } };
-            for (int k = 0; k < fishAt.Length; k++)
-            {
-                int index = fishAt[k];
-                float sm = obstacleCenters[index];
-                float width = Mathf.Max(obstacleWidths[index], 8f);
-                Vector3 pos = PathPos(sm), dir = PathDir(sm);
-                Vector3 outward = new Vector3(pos.x, 0f, pos.z).normalized;
-                Vector3 side = k % 2 == 0 ? outward : -outward;
-                float offset = width * 0.5f + 3f;
-                Vector3 zone = pos + side * offset + Vector3.up * 0.3f;
-                Vector3 across = -side;
-                Vector3 size = new Vector3(Mathf.Abs(dir.x) * 10f + Mathf.Abs(dir.z), 0f, Mathf.Abs(dir.z) * 10f + Mathf.Abs(dir.x));
-                S3SceneBuilder.FishArea("Fish Area " + (k + 1), pools[k % pools.Length], zone, size, Yaw(across), 15f,
-                    offset + width * 0.5f + 1.5f, offset + width * 0.5f + 4f, 11 * (k + 1));
-            }
+            // ---- 15. The finish platform, joined to the end of the final bridge.
+            L.arenaSize = new Vector3(28f, 1.2f, 24f);
+            L.arenaCenter = _pos + east * (L.arenaSize.x * 0.5f);
+            FinishPlatform(L.arenaCenter, east);
 
-            // ---- Hidden chests tucked along the route.
-            PlaceChests(obstacleCenters);
+            gates.Add(S3SceneBuilder.Gate("Finish line", L.arenaCenter + new Vector3(-L.arenaSize.x * 0.5f + 3f, 0f, 0f), 90f, new Color(0.2f, 0.9f, 0.3f), 16f));
+            L.gates = gates.ToArray();
 
-            return layout;
+            // The trap door is the first corner pad. The player comes back to the start of the obstacle before it.
+            L.trapPanel = trapPad;
+            L.trapReturn = L.sections[3].start + L.sections[3].direction * 2f + Vector3.up * 1.8f;
+
+            L.courseCenter = new Vector3(-9f, 0f, 30f);
+            L.areaMin = new Vector2(-82f, -28f);
+            L.areaMax = new Vector2(64f, 76f);
+
+            BuildFish(cod, salmon, clown);
+            BuildChests();
+            return L;
+        }
+
+        static Checkpoint MakeGate(int sectionIndex)
+        {
+            var s = _layout.sections[sectionIndex];
+            Vector3 at = s.start + s.direction * s.length;
+            return S3SceneBuilder.Gate("Checkpoint " + s.name, at, Mathf.Atan2(s.direction.x, s.direction.z) * Mathf.Rad2Deg, Yellow, 14f);
+        }
+
+        // Puts an obstacle at the end of the route so far, and moves the end of the route past it.
+        static Transform Place(string name, float length, float width, System.Action<Transform, float, float> build)
+        {
+            Vector3 mid = _pos + _dir * (length * 0.5f);
+            var root = new GameObject("Obstacle " + name).transform;
+            root.SetPositionAndRotation(mid, Quaternion.LookRotation(_dir));
+            build(root, length, width);
+
+            _layout.sections.Add(new Section { name = name, center = mid, direction = _dir, length = length, width = width, start = _pos });
+            _pos += _dir * length;
+            return root;
+        }
+
+        // A square pad where the route turns. The outer sides have railings; the way in and the way out are open.
+        static GameObject Corner(string name, Vector3 newDir)
+        {
+            Vector3 centre = _pos + _dir * (Width * 0.5f);
+            var root = new GameObject(name).transform;
+            root.SetPositionAndRotation(centre, Quaternion.LookRotation(_dir));
+
+            var pad = Platform(root, "Pad", 0f, 0f, Width, Width, true);
+            bool exitRight = Vector3.Dot(newDir, root.right) > 0f;
+            float half = Width * 0.5f;
+            RailRun(root, new Vector3(-half, Top, half), new Vector3(half, Top, half));                       // straight on is closed
+            float outer = exitRight ? -half : half;
+            RailRun(root, new Vector3(outer, Top, -half), new Vector3(outer, Top, half));
+
+            _layout.sections.Add(new Section { name = name, center = centre, direction = _dir, length = Width, width = Width, start = _pos });
+            _pos = centre + newDir * half;
+            _dir = newDir;
+            return pad;
         }
 
         // ------------------------------------------------------------------ building blocks
 
         static GameObject P(Transform parent, PrimitiveType type, string name, Vector3 lp, Vector3 ls, Color c,
-            string kind = "quilt", bool solid = true, Vector3 euler = default)
+            string kind = "plain", bool solid = true, Vector3 euler = default)
         {
             var go = GameObject.CreatePrimitive(type);
             go.name = name;
@@ -198,12 +178,13 @@ namespace Badeland.EditorTools
                 case "quilt": GrayboxMaterials.TintQuilted(go, c); break;
                 case "wood": GrayboxMaterials.TintWood(go, c); break;
                 case "stone": GrayboxMaterials.TintStone(go, c); break;
+                case "glass": GrayboxMaterials.TintWater(go, c); break;
                 default: GrayboxMaterials.Tint(go, c); break;
             }
             return go;
         }
 
-        // A rounded tube between two points (for looks only).
+        // A fat rounded inflatable tube between two points (for looks only).
         static GameObject Tube(Transform parent, Vector3 from, Vector3 to, float diameter, Color c)
         {
             Vector3 d = to - from;
@@ -220,24 +201,59 @@ namespace Badeland.EditorTools
 
         static void Foam(Transform parent, Vector3 lp, float sx, float sz)
         {
-            var foam = P(parent, PrimitiveType.Cube, "Foam", new Vector3(lp.x, 0.03f, lp.z), new Vector3(sx + 1.2f, 0.04f, sz + 1.2f), Foamy, "plain", false);
-            foam.transform.localRotation = Quaternion.identity;
+            P(parent, PrimitiveType.Cube, "Foam", new Vector3(lp.x, 0.03f, lp.z), new Vector3(sx + 1.2f, 0.04f, sz + 1.2f), Foamy, "plain", false);
         }
 
-        // A flat inflatable deck with fat tubes along its long edges.
-        static GameObject Deck(Transform parent, string name, float x, float z, float w, float l, Color c, bool tubes = true)
+        // A thick inflatable platform: a pink rim all round and a purple floor inside, like in the reference picture.
+        static GameObject Platform(Transform parent, string name, float x, float z, float w, float l, bool foam = true)
         {
-            var deck = P(parent, PrimitiveType.Cube, name, new Vector3(x, 0f, z), new Vector3(w, 1.2f, l), c);
-            Foam(parent, new Vector3(x, 0f, z), w, l);
-            if (tubes)
-                for (int side = -1; side <= 1; side += 2)
-                    Tube(parent, new Vector3(x + side * (w * 0.5f - 0.2f), 0.7f, z - l * 0.5f + 0.4f), new Vector3(x + side * (w * 0.5f - 0.2f), 0.7f, z + l * 0.5f - 0.4f), 0.7f, White);
-            return deck;
+            var rim = P(parent, PrimitiveType.Cube, name, new Vector3(x, 0f, z), new Vector3(w, 1.2f, l), Pink);
+            P(parent, PrimitiveType.Cube, "Floor", new Vector3(x, 0.62f, z), new Vector3(w - 1.4f, 0.05f, l - 1.4f), Purple, "plain", false);
+            if (foam) Foam(parent, new Vector3(x, 0f, z), w, l);
+            return rim;
+        }
+
+        // A railing along the edge of the route: three fat tubes, colourful posts, and an invisible wall too tall to jump.
+        static void RailRun(Transform root, Vector3 a, Vector3 b)
+        {
+            Vector3 d = b - a;
+            float length = d.magnitude;
+            if (length < 0.5f) return;
+            Vector3 dir = d / length;
+
+            Color[] tubeColors = { Yellow, Green, Yellow };
+            float[] heights = { 0.7f, 1.6f, 2.5f };
+            for (int i = 0; i < 3; i++)
+                Tube(root, a + dir * 0.4f + Vector3.up * heights[i], b - dir * 0.4f + Vector3.up * heights[i], 0.75f, tubeColors[i]);
+
+            int posts = Mathf.Max(2, Mathf.CeilToInt(length / 4f) + 1);
+            Color[] postColors = { Orange, Blue, Pink, Green };
+            for (int i = 0; i < posts; i++)
+            {
+                Vector3 p = Vector3.Lerp(a, b, i / (posts - 1f));
+                var post = P(root, PrimitiveType.Capsule, "Rail Post", p + Vector3.up * 1.7f, new Vector3(1.0f, 1.7f, 1.0f), postColors[(i + _railColor) % postColors.Length], "quilt", false);
+                P(root, PrimitiveType.Sphere, "Rail Cap", p + Vector3.up * 3.35f, Vector3.one * 0.7f, Yellow, "plain", false);
+            }
+            _railColor++;
+
+            var wall = new GameObject("Rail Wall");
+            wall.transform.SetParent(root, false);
+            wall.transform.localPosition = (a + b) * 0.5f + Vector3.up * 1.9f;
+            wall.transform.localRotation = Quaternion.LookRotation(dir);
+            wall.AddComponent<BoxCollider>().size = new Vector3(0.7f, 3.8f, length);
+        }
+
+        // Railings on both long sides of an obstacle.
+        static void Rails(Transform r, float length, float width)
+        {
+            float half = width * 0.5f - 0.2f;
+            RailRun(r, new Vector3(-half, Top, -length * 0.5f), new Vector3(-half, Top, length * 0.5f));
+            RailRun(r, new Vector3(half, Top, -length * 0.5f), new Vector3(half, Top, length * 0.5f));
         }
 
         // A mat that gives under your feet. Its top is at topY (local), and it hangs down to the water.
-        static GameObject Soft(Transform parent, string name, float x, float z, float w, float l, float topY, Color c,
-            float dip = 0.25f, float stiffness = 38f, float damping = 3.2f)
+        static GameObject Soft(Transform parent, string name, float x, float z, float w, float l, float topY, Color c, Color tube,
+            float dip = 0.25f, float stiffness = 38f, float damping = 3.2f, float bob = 0.04f)
         {
             var holder = new GameObject(name);
             holder.transform.SetParent(parent, false);
@@ -245,355 +261,387 @@ namespace Badeland.EditorTools
             float height = topY + 0.6f;
             P(holder.transform, PrimitiveType.Cube, "Mat", new Vector3(0f, (topY - 0.6f) * 0.5f, 0f), new Vector3(w, height, l), c);
             for (int side = -1; side <= 1; side += 2)
-                Tube(holder.transform, new Vector3(side * (w * 0.5f - 0.2f), topY - 0.1f, -l * 0.5f + 0.4f), new Vector3(side * (w * 0.5f - 0.2f), topY - 0.1f, l * 0.5f - 0.4f), 0.7f, White);
+                Tube(holder.transform, new Vector3(side * (w * 0.5f - 0.25f), topY - 0.05f, -l * 0.5f + 0.3f), new Vector3(side * (w * 0.5f - 0.25f), topY - 0.05f, l * 0.5f - 0.3f), 0.6f, tube);
             var soft = holder.AddComponent<SoftPlatform>();
-            soft.dip = dip; soft.stiffness = stiffness; soft.damping = damping;
+            soft.dip = dip; soft.stiffness = stiffness; soft.damping = damping; soft.idleBob = bob;
             return holder;
         }
 
-        // A round float pad joining one obstacle to the next. (The trap-door pad is square, so the trap can drop it away.)
-        static GameObject Hub(Vector3 position, string name, Color c, bool square = false)
-        {
-            GameObject hub;
-            if (square)
-            {
-                hub = P(null, PrimitiveType.Cube, name, new Vector3(position.x, 0f, position.z), new Vector3(6.5f, 1.2f, 6.5f), new Color(0.92f, 0.92f, 0.98f));
-                P(null, PrimitiveType.Cube, "Foam", new Vector3(position.x, 0.03f, position.z), new Vector3(7.7f, 0.02f, 7.7f), Foamy, "plain", false);
-                var ring = MeshKit.Make("Ring", _ringMesh, c, "quilt", false, hub.transform, new Vector3(0f, (Top + 0.05f) / 1.2f, 0f), Quaternion.Euler(90f, 0f, 0f), new Vector3(1f / 6.5f, 1f / 6.5f, 1f / 1.2f));
-                return hub;
-            }
+        // ------------------------------------------------------------------ start and finish platforms
 
-            hub = P(null, PrimitiveType.Cylinder, name, new Vector3(position.x, 0f, position.z), new Vector3(6.5f, 0.6f, 6.5f), c);
-            P(null, PrimitiveType.Cylinder, "Foam", new Vector3(position.x, 0.03f, position.z), new Vector3(7.7f, 0.02f, 7.7f), Foamy, "plain", false);
-            // An inflated ring around the top edge (for looks only).
-            MeshKit.Make("Ring", _ringMesh, White, "quilt", false, null, new Vector3(position.x, Top + 0.05f, position.z), Quaternion.Euler(90f, 0f, 0f), Vector3.one);
-            return hub;
+        static void StartPlatform(Vector3 centre, Vector3 dir)
+        {
+            var root = new GameObject("Start Platform").transform;
+            root.SetPositionAndRotation(centre, Quaternion.LookRotation(dir));
+            float w = 18f, l = 24f;
+            Platform(root, "Start Platform", 0f, 0f, w, l);
+            RailRun(root, new Vector3(-w * 0.5f + 0.2f, Top, -l * 0.5f), new Vector3(-w * 0.5f + 0.2f, Top, l * 0.5f));
+            RailRun(root, new Vector3(w * 0.5f - 0.2f, Top, -l * 0.5f), new Vector3(w * 0.5f - 0.2f, Top, l * 0.5f));
+            RailRun(root, new Vector3(-w * 0.5f, Top, -l * 0.5f + 0.2f), new Vector3(w * 0.5f, Top, -l * 0.5f + 0.2f));
+            // The way out to the first obstacle is only 3.6 m wide: close the rest of the east edge.
+            RailRun(root, new Vector3(-w * 0.5f, Top, l * 0.5f - 0.2f), new Vector3(-2.2f, Top, l * 0.5f - 0.2f));
+            RailRun(root, new Vector3(2.2f, Top, l * 0.5f - 0.2f), new Vector3(w * 0.5f, Top, l * 0.5f - 0.2f));
+            CourseScenery.Arch("Start Arch", centre + dir * (l * 0.5f - 3f), false, Quaternion.LookRotation(dir));
         }
 
-        static void Checkered(Vector3 center, int tilesAcross)
+        static void FinishPlatform(Vector3 centre, Vector3 dir)
         {
-            var root = new GameObject("Checkered Line");
-            for (int i = 0; i < tilesAcross; i++)
+            var root = new GameObject("Finish Platform").transform;
+            root.SetPositionAndRotation(centre, Quaternion.LookRotation(dir));
+            float w = _layout.arenaSize.z, l = _layout.arenaSize.x;
+            Platform(root, "Finish Platform", 0f, 0f, w, l);
+            // Checkered finish line.
+            for (int i = 0; i < 16; i++)
                 for (int row = 0; row < 2; row++)
-                {
-                    bool white = (i + row) % 2 == 0;
-                    var tile = P(root.transform, PrimitiveType.Cube, "Tile", new Vector3(center.x - tilesAcross * 0.5f + i + 0.5f, center.y, center.z - 0.5f - row), new Vector3(1f, 0.02f, 1f),
-                        white ? new Color(0.97f, 0.97f, 0.97f) : new Color(0.08f, 0.08f, 0.1f), "plain", false);
-                }
+                    P(root, PrimitiveType.Cube, "Tile", new Vector3(-8f + i - 0.5f + 0.5f, Top + 0.07f, -l * 0.5f + 3f + row - 0.5f), new Vector3(1f, 0.02f, 1f),
+                        (i + row) % 2 == 0 ? Color.white : new Color(0.08f, 0.08f, 0.1f), "plain", false);
+            CourseScenery.Arch("Finish Arch", centre - dir * (l * 0.5f - 4f), true, Quaternion.LookRotation(dir));
         }
 
-        // ------------------------------------------------------------------ the 15 obstacles (local: x right, z forward, deck top at y 0.6)
+        // ------------------------------------------------------------------ the obstacles (local: x right, z forward, deck top at y 0.6)
 
-        // 1. Floating balance pads: soft round cushions scattered in a zigzag, each giving way underfoot.
-        static void Obs1Pads(Transform r, float L, float W)
+        // 2. Wobble bridge: a narrow chain of soft planks that sink and sway under your feet.
+        static void Obs2WobbleBridge(Transform r, float L, float W)
         {
-            Color[] colors = { Orange, Yellow, Pink, Teal, Green, Purple };
-            const int n = 8;
+            Color[] colors = { Yellow, Orange, Pink, Teal };
+            int n = 8;
             for (int i = 0; i < n; i++)
-            {
-                float z = -L * 0.5f + 1.8f + i * (L - 3.6f) / (n - 1);
-                float x = (i % 2 == 0 ? -1f : 1f) * (1.8f + 0.6f * Mathf.Sin(i * 2.1f));
-                float d = 3.2f + 0.6f * Mathf.Sin(i * 1.3f);
-                var holder = new GameObject("Float Pad " + i);
-                holder.transform.SetParent(r, false);
-                holder.transform.localPosition = new Vector3(x, 0f, z);
-                P(holder.transform, PrimitiveType.Cylinder, "Pad", Vector3.zero, new Vector3(d, 0.6f, d), colors[i % colors.Length]);
-                P(holder.transform, PrimitiveType.Cylinder, "Foam", new Vector3(0f, 0.03f, 0f), new Vector3(d + 1.2f, 0.02f, d + 1.2f), Foamy, "plain", false);
-                var soft = holder.AddComponent<SoftPlatform>();
-                soft.dip = 0.3f;
-            }
-        }
-
-        // 2. A long, narrow inflatable beam that sways from side to side.
-        static void Obs2Beam(Transform r, float L, float W)
-        {
-            var holder = new GameObject("Balance Beam");
-            holder.transform.SetParent(r, false);
-            holder.transform.localPosition = Vector3.zero;
-            var box = holder.AddComponent<BoxCollider>();
-            box.size = new Vector3(1.2f, 1.2f, L);
-            P(holder.transform, PrimitiveType.Capsule, "Beam", new Vector3(0f, -0.05f, 0f), new Vector3(1.3f, L * 0.5f, 1.3f), Orange, "quilt", false, new Vector3(90f, 0f, 0f));
-            for (int i = 0; i < 5; i++) // white bands round the beam
-                P(holder.transform, PrimitiveType.Cylinder, "Band", new Vector3(0f, -0.05f, -L * 0.4f + i * L * 0.2f), new Vector3(1.38f, 0.12f, 1.38f), White, "plain", false, new Vector3(90f, 0f, 0f));
-
-            var platform = holder.AddComponent<MovingPlatform>();
-            platform.pointA = r.position - r.right * 0.6f;
-            platform.pointB = r.position + r.right * 0.6f;
-            platform.period = 3.4f;
-        }
-
-        // 3. Big inflatable steps: five up, a soft platform on top, five down.
-        static void Obs3Stairs(Transform r, float L, float W)
-        {
-            Color[] colors = { Blue, Teal, Green, Yellow, Orange };
-            const float run = 2.4f, rise = 0.5f;
-            float z = -L * 0.5f;
-            for (int k = 0; k < 5; k++)
-            {
-                float top = Top + rise * (k + 1);
-                var step = P(r, PrimitiveType.Cube, "Step Up " + k, new Vector3(0f, (top - 0.6f) * 0.5f, z + run * 0.5f), new Vector3(W, top + 0.6f, run), colors[k % colors.Length]);
-                Tube(r, new Vector3(-W * 0.5f + 0.5f, top - 0.2f, z + 0.3f), new Vector3(W * 0.5f - 0.5f, top - 0.2f, z + 0.3f), 0.7f, White);
-                z += run;
-            }
-            float platformTop = Top + rise * 5;
-            Foam(r, new Vector3(0f, 0f, z + 2f), W, 4f);
-            Soft(r, "Top Mat", 0f, z + 2f, W, 4f, platformTop, Pink, 0.2f);
-            z += 4f;
-            for (int k = 4; k >= 0; k--)
-            {
-                float top = Top + rise * (k + 1);
-                P(r, PrimitiveType.Cube, "Step Down " + k, new Vector3(0f, (top - 0.6f) * 0.5f, z + run * 0.5f), new Vector3(W, top + 0.6f, run), colors[k % colors.Length]);
-                Tube(r, new Vector3(-W * 0.5f + 0.5f, top - 0.2f, z + run - 0.3f), new Vector3(W * 0.5f - 0.5f, top - 0.2f, z + run - 0.3f), 0.7f, White);
-                z += run;
-            }
-        }
-
-        // 4. A bumpy field of big round domes.
-        static void Obs4Bumps(Transform r, float L, float W)
-        {
-            var mesh = MeshKit.HeightPad("BumpField", W, L, (x, z) =>
-            {
-                float dome = (0.5f + 0.5f * Mathf.Cos(2f * Mathf.PI * x / 5f)) * (0.5f + 0.5f * Mathf.Cos(2f * Mathf.PI * z / 5f));
-                return Top + 1.0f * dome * dome * 1.0f + 0.0f;
-            }, -0.6f);
-            MeshKit.Make("Bump Field", mesh, Pink, "quilt", true, r, Vector3.zero, Quaternion.identity, Vector3.one);
-            Foam(r, Vector3.zero, W, L);
+                Soft(r, "Bridge Plank " + i, 0f, -L * 0.5f + 1f + i * 2f, W, 1.9f, Top, colors[i % colors.Length], White, 0.4f, 20f, 1.1f, 0.07f);
             for (int side = -1; side <= 1; side += 2)
-                Tube(r, new Vector3(side * (W * 0.5f - 0.1f), 0.6f, -L * 0.5f + 0.4f), new Vector3(side * (W * 0.5f - 0.1f), 0.6f, L * 0.5f - 0.4f), 0.7f, White);
+                Tube(r, new Vector3(side * (W * 0.5f + 0.5f), 1.4f, -L * 0.5f), new Vector3(side * (W * 0.5f + 0.5f), 1.4f, L * 0.5f), 0.55f, Pink);
         }
 
-        // 5. A climbing wall: two soft blocks to jump up onto, then drop down.
-        static void Obs5Wall(Transform r, float L, float W)
+        // 3. A curved inflatable tunnel of rings, with a see-through skin.
+        static void Obs3Tunnel(Transform r, float L, float W)
         {
-            Deck(r, "Deck", 0f, 0f, W, L, Blue);
-            var a = P(r, PrimitiveType.Cube, "Wall Block 1", new Vector3(0f, (2.0f - 0.6f) * 0.5f + 0.0f, -2.3f), new Vector3(W, 2.0f + 0.6f, 2.2f), Orange);
-            var b = P(r, PrimitiveType.Cube, "Wall Block 2", new Vector3(0f, (3.4f - 0.6f) * 0.5f, 1.2f), new Vector3(W, 3.4f + 0.6f, 2.2f), Yellow);
-            Tube(r, new Vector3(-W * 0.5f + 0.5f, 2.0f - 0.2f, -2.3f), new Vector3(W * 0.5f - 0.5f, 2.0f - 0.2f, -2.3f), 0.8f, White);
-            Tube(r, new Vector3(-W * 0.5f + 0.5f, 3.4f - 0.2f, 1.2f), new Vector3(W * 0.5f - 0.5f, 3.4f - 0.2f, 1.2f), 0.8f, White);
-            // Hand holds on the faces.
-            Color[] holds = { Red, Green, Purple, Teal };
-            for (int i = 0; i < 12; i++)
-            {
-                float x = -W * 0.5f + 1f + (i % 6) * (W - 2f) / 5f;
-                float y = 0.9f + (i / 6) * 0.9f;
-                P(r, PrimitiveType.Sphere, "Hold", new Vector3(x, y, -3.45f), new Vector3(0.5f, 0.5f, 0.35f), holds[i % holds.Length], "plain", false);
-                P(r, PrimitiveType.Sphere, "Hold", new Vector3(x, y + 0.7f, 0.05f), new Vector3(0.5f, 0.5f, 0.35f), holds[(i + 1) % holds.Length], "plain", false);
-            }
-        }
-
-        // 6. A soft inflatable tunnel.
-        static void Obs6Tunnel(Transform r, float L, float W)
-        {
-            Deck(r, "Deck", 0f, 0f, W, L, Teal, false);
-            var mesh = MeshKit.Tunnel(W * 0.5f - 0.2f, 3.9f, L - 0.6f);
-            MeshKit.Make("Tunnel", mesh, Yellow, "quilt", true, r, new Vector3(0f, Top, 0f), Quaternion.identity, Vector3.one);
-            for (int i = 0; i < 6; i++)
-            {
-                var ring = MeshKit.Make("Tunnel Ring", _ringMesh, Orange, "quilt", false, r, new Vector3(0f, Top, -L * 0.5f + 1.5f + i * (L - 3f) / 5f), Quaternion.identity, new Vector3(1.2f, 1.35f, 1.2f));
-            }
-        }
-
-        // 7. Giant balls to climb round (or over).
-        static void Obs7Balls(Transform r, float L, float W)
-        {
-            Deck(r, "Deck", 0f, 0f, W, L, Blue);
-            Color[] colors = { Red, Yellow, Green, Pink, Orange, Purple, Teal, Red };
-            float[,] spots =
-            {
-                { -3.5f, -8f, 2.6f }, { 3.2f, -5.5f, 2.4f }, { -2.5f, -2f, 3.0f }, { 4.0f, 1.0f, 2.6f },
-                { -4.2f, 3.8f, 2.8f }, { 1.0f, 6.2f, 3.4f }, { -3.5f, 9f, 2.4f }, { 3.5f, 9.2f, 2.2f },
-            };
-            for (int i = 0; i < spots.GetLength(0); i++)
-            {
-                float d = spots[i, 2];
-                var ball = P(r, PrimitiveType.Sphere, "Giant Ball", new Vector3(spots[i, 0], Top + d * 0.5f - 0.1f, spots[i, 1]), Vector3.one * d, colors[i % colors.Length]);
-                P(r, PrimitiveType.Cylinder, "Stripe", ball.transform.localPosition, new Vector3(d * 1.003f, 0.05f, d * 1.003f), White, "plain", false);
-            }
-        }
-
-        // 8. Big springy mattresses.
-        static void Obs8Mattresses(Transform r, float L, float W)
-        {
-            Color[] colors = { Yellow, Pink, Teal, Orange };
+            float[] yaws = { 0f, 13f, -13f, 0f };
+            float len = L / 4f;
+            Vector3 p = new Vector3(0f, 0f, -L * 0.5f);
+            Quaternion previous = Quaternion.identity;
             for (int i = 0; i < 4; i++)
             {
-                float z = -L * 0.5f + 2.2f + i * 5.2f;
-                Soft(r, "Mattress " + i, 0f, z, W, 4.4f, Top + 0.2f, colors[i], 0.45f, 26f, 1.7f);
+                Quaternion q = Quaternion.Euler(0f, yaws[i], 0f);
+                Vector3 centre = p + q * Vector3.forward * (len * 0.5f);
+                var piece = new GameObject("Tunnel Piece " + i).transform;
+                piece.SetParent(r, false);
+                piece.localPosition = centre;
+                piece.localRotation = q;
+
+                P(piece, PrimitiveType.Cube, "Deck", new Vector3(0f, 0f, 0f), new Vector3(W, 1.2f, len + 0.3f), Pink);
+                P(piece, PrimitiveType.Cube, "Floor", new Vector3(0f, 0.62f, 0f), new Vector3(W - 1.2f, 0.05f, len + 0.3f), Purple, "plain", false);
+                MeshKit.Make("Tunnel Skin", MeshKit.Tunnel(W * 0.5f - 0.4f, 3.4f, len + 0.2f, 0.2f), Glass, "glass", false, piece, new Vector3(0f, Top, 0f), Quaternion.identity, Vector3.one);
+                for (int k = 0; k < 2; k++)
+                    MeshKit.Make("Tunnel Ring", _ringMesh, Color.Lerp(White, Blue, 0.35f), "quilt", false, piece, new Vector3(0f, Top, -len * 0.25f + k * len * 0.5f), Quaternion.identity, new Vector3(0.92f, 1.12f, 1f));
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    var wall = new GameObject("Tunnel Wall");
+                    wall.transform.SetParent(piece, false);
+                    wall.transform.localPosition = new Vector3(side * (W * 0.5f - 0.5f), Top + 1.6f, 0f);
+                    wall.AddComponent<BoxCollider>().size = new Vector3(0.6f, 3.4f, len + 0.3f);
+                }
+                p = centre + q * Vector3.forward * (len * 0.5f);
+                previous = q;
+            }
+            Foam(r, Vector3.zero, W, L);
+        }
+
+        // 4. Bouncing pillars to weave between.
+        static void Obs4Pillars(Transform r, float L, float W)
+        {
+            Platform(r, "Deck", 0f, 0f, W, L);
+            Rails(r, L, W);
+            Color[] colors = { Orange, Teal, Pink, Yellow, Green, Blue };
+            float[,] spots = { { -2.6f, -5f }, { 2.0f, -5f }, { -1.4f, -1.4f }, { 3.0f, -1.4f }, { -3.0f, 2.2f }, { 1.4f, 2.2f }, { -1.0f, 5.4f }, { 3.2f, 5.4f } };
+            for (int i = 0; i < spots.GetLength(0); i++)
+            {
+                var pillar = P(r, PrimitiveType.Capsule, "Pillar", new Vector3(spots[i, 0], Top + 1.6f, spots[i, 1]), new Vector3(1.5f, 1.6f, 1.5f), colors[i % colors.Length], "quilt");
+                var bob = pillar.AddComponent<Bobber>();
+                bob.amplitude = 0.18f; bob.speed = 2.2f; bob.phase = i * 0.8f;
+                P(r, PrimitiveType.Cylinder, "Pillar Base", new Vector3(spots[i, 0], Top + 0.1f, spots[i, 1]), new Vector3(2.0f, 0.1f, 2.0f), White, "quilt", false);
             }
         }
 
-        // 9. Rolling logs: they turn under your feet and carry you backwards.
-        static void Obs9Logs(Transform r, float L, float W)
+        // 5. A sloped climbing wall with big handholds, a platform on top, and a slope down.
+        static void Obs5ClimbingWall(Transform r, float L, float W)
         {
-            Color[] colors = { Orange, Yellow };
-            for (int i = 0; i < 6; i++)
+            Platform(r, "Deck", 0f, 0f, W, L);
+            Rails(r, L, W);
+            float topY = Top + 3.0f;
+            var mesh = MeshKit.HeightPad("ClimbWall", W - 1.2f, L - 0.4f, (x, z) =>
             {
-                var holder = new GameObject("Rolling Log " + i);
+                if (z < -3.2f) return Top;
+                if (z < 0.3f) return Mathf.Lerp(Top, topY, (z + 3.2f) / 3.5f);
+                if (z < 2.2f) return topY;
+                if (z < 5.2f) return Mathf.Lerp(topY, Top, (z - 2.2f) / 3f);
+                return Top;
+            }, -0.6f);
+            MeshKit.Make("Climbing Wall", mesh, Orange, "plain", true, r, Vector3.zero, Quaternion.identity, Vector3.one);
+            Color[] holds = { Red, Green, Blue, Yellow, Teal };
+            for (int i = 0; i < 12; i++)
+            {
+                float x = -3.2f + (i % 4) * 2.1f;
+                float z = -2.8f + (i / 4) * 1.15f;
+                float y = Top + 3.0f * (z + 3.2f) / 3.5f + 0.2f;
+                P(r, PrimitiveType.Sphere, "Handhold", new Vector3(x, y, z), new Vector3(0.7f, 0.5f, 0.7f), holds[i % holds.Length], "plain", false);
+            }
+        }
+
+        // 6. Floating logs that roll under your feet.
+        static void Obs6Logs(Transform r, float L, float W)
+        {
+            Rails(r, L, W);
+            Color[] colors = { Orange, Yellow };
+            for (int i = 0; i < 5; i++)
+            {
+                var holder = new GameObject("Floating Log " + i);
                 holder.transform.SetParent(r, false);
-                holder.transform.localPosition = new Vector3(0f, -0.25f, -6.25f + i * 2.5f);
-                var visual = P(holder.transform, PrimitiveType.Cylinder, "Log", Vector3.zero, new Vector3(1.7f, W * 0.5f, 1.7f), colors[i % 2], "quilt", true, new Vector3(0f, 0f, 90f));
+                holder.transform.localPosition = new Vector3(0f, -0.25f, -4.4f + i * 2.2f);
+                var visual = P(holder.transform, PrimitiveType.Cylinder, "Log", Vector3.zero, new Vector3(1.7f, (W - 1f) * 0.5f, 1.7f), colors[i % 2], "quilt", true, new Vector3(0f, 0f, 90f));
                 P(holder.transform, PrimitiveType.Cylinder, "Stripe", Vector3.zero, new Vector3(1.74f, 0.4f, 1.74f), White, "plain", false, new Vector3(0f, 0f, 90f));
                 var log = holder.AddComponent<RollingLog>();
                 log.visual = visual.transform;
                 log.radius = 0.85f;
-                log.surfaceSpeed = (i % 2 == 0 ? -1f : 1f) * 2.3f;
+                log.surfaceSpeed = (i % 2 == 0 ? -1f : 1f) * 1.8f;
             }
         }
 
-        // 10. A climbing frame with nets: three ledges to scramble up, then jump down.
-        static void Obs10Net(Transform r, float L, float W)
+        // 7. A big round platform that turns slowly: step on at one end, step off at the other.
+        static void Obs7RotatingDisc(Transform r, float L, float W)
         {
-            Deck(r, "Deck", 0f, 0f, W, L, Green);
-            float[] tops = { 1.7f, 2.8f, 3.9f };
-            float[] zs = { -3.0f, 1.1f, 5.2f };
+            Platform(r, "Entry Deck", 0f, -L * 0.5f + 1.2f, W, 2.4f);
+            Platform(r, "Exit Deck", 0f, L * 0.5f - 1.2f, W, 2.4f);
+            Rails(r, L, W);
+
+            var disc = new GameObject("Rotating Disc");
+            disc.transform.SetParent(r, false);
+            disc.transform.localPosition = Vector3.zero;
+            P(disc.transform, PrimitiveType.Cylinder, "Disc", Vector3.zero, new Vector3(11.4f, 0.6f, 11.4f), Pink);
+            Color[] wedges = { Yellow, Teal, Orange, Green, Blue, Purple };
+            for (int i = 0; i < 6; i++)
+            {
+                var wedge = P(disc.transform, PrimitiveType.Cube, "Wedge", new Vector3(0f, 0.61f, 0f), new Vector3(5.3f, 0.05f, 1.5f), wedges[i], "plain", false);
+                wedge.transform.localRotation = Quaternion.Euler(0f, i * 60f, 0f);
+                wedge.transform.localPosition = Quaternion.Euler(0f, i * 60f, 0f) * new Vector3(0f, 0.61f, 2.9f);
+            }
+            P(disc.transform, PrimitiveType.Cylinder, "Hub", new Vector3(0f, 0.9f, 0f), new Vector3(1.2f, 0.4f, 1.2f), Yellow, "quilt", false);
+            Tube(disc.transform, new Vector3(0f, 0.6f, 0f), new Vector3(0f, 2.6f, 0f), 0.6f, Red);
+            var spin = disc.AddComponent<SpinningPlatform>();
+            spin.degreesPerSecond = 24f;
+            spin.radius = 5.7f;
+        }
+
+        // 8. A big trampoline that throws you up and forward.
+        static void Obs8Trampoline(Transform r, float L, float W)
+        {
+            Platform(r, "Entry Deck", 0f, -L * 0.5f + 1.2f, W, 2.4f);
+            Platform(r, "Exit Deck", 0f, L * 0.5f - 1.2f, W, 2.4f);
+            Rails(r, L, W);
+            var mat = Soft(r, "Trampoline", 0f, 0f, W - 1.2f, L - 4.6f, Top, Teal, Yellow, 0.35f, 24f, 1.4f, 0.05f);
+            var pad = new GameObject("Bounce Trigger");
+            pad.transform.SetParent(r, false);
+            pad.transform.localPosition = new Vector3(0f, Top + 0.15f, 0f);
+            var box = pad.AddComponent<BoxCollider>();
+            box.size = new Vector3(W - 2f, 0.3f, L - 5.6f);
+            box.isTrigger = true;
+            pad.AddComponent<BouncePad>().bounceVelocity = 15f;
+            P(r, PrimitiveType.Cylinder, "Target", new Vector3(0f, Top + 0.1f, 0f), new Vector3(5f, 0.04f, 5f), Pink, "plain", false);
+            P(r, PrimitiveType.Cylinder, "Target Centre", new Vector3(0f, Top + 0.12f, 0f), new Vector3(2.4f, 0.04f, 2.4f), Yellow, "plain", false);
+        }
+
+        // 9. Swinging inflatable balls on ropes.
+        static void Obs9Pendulums(Transform r, float L, float W)
+        {
+            Platform(r, "Deck", 0f, 0f, W, L);
+            Rails(r, L, W);
+            Color[] colors = { Red, Yellow, Teal };
             for (int i = 0; i < 3; i++)
             {
-                P(r, PrimitiveType.Cube, "Ledge " + (i + 1), new Vector3(0f, (tops[i] - 0.6f) * 0.5f, zs[i]), new Vector3(W, tops[i] + 0.6f, 2.5f), i % 2 == 0 ? Orange : Yellow);
-                Tube(r, new Vector3(-W * 0.5f + 0.5f, tops[i] - 0.2f, zs[i] - 1.1f), new Vector3(W * 0.5f - 0.5f, tops[i] - 0.2f, zs[i] - 1.1f), 0.7f, White);
+                float z = -4.5f + i * 4.5f;
+                var pivot = new GameObject("Pendulum " + i);
+                pivot.transform.SetParent(r, false);
+                pivot.transform.localPosition = new Vector3(0f, Top + 6.2f, z);
+
+                P(pivot.transform, PrimitiveType.Cylinder, "Rope", new Vector3(0f, -2.1f, 0f), new Vector3(0.15f, 2.1f, 0.15f), new Color(0.9f, 0.85f, 0.65f), "plain", false);
+                var ball = P(pivot.transform, PrimitiveType.Sphere, "Swinging Ball", new Vector3(0f, -5.0f, 0f), Vector3.one * 2.2f, colors[i], "quilt", false);
+                P(pivot.transform, PrimitiveType.Cylinder, "Stripe", new Vector3(0f, -5.0f, 0f), new Vector3(2.23f, 0.05f, 2.23f), White, "plain", false);
+
+                var swing = pivot.AddComponent<Pendulum>();
+                swing.ball = ball.transform;
+                swing.ballRadius = 1.1f;
+                swing.maxAngle = 48f;
+                swing.period = 3.4f;
+                swing.phase = i * 1.3f;
             }
-            // Cargo nets hanging down each side, and a net wall at the back.
-            var rope = new Color(0.9f, 0.85f, 0.65f);
-            for (int side = -1; side <= 1; side += 2)
+            // Tall posts and a beam above each ball, so the ropes have something to hang from.
+            for (int i = 0; i < 3; i++)
             {
-                for (int k = 0; k < 14; k++)
-                    P(r, PrimitiveType.Cylinder, "Net Rope", new Vector3(side * (W * 0.5f + 0.1f), 2.4f, -L * 0.5f + 0.5f + k * (L - 1f) / 13f), new Vector3(0.07f, 2.0f, 0.07f), rope, "plain", false);
-                for (int k = 0; k < 5; k++)
-                    P(r, PrimitiveType.Cylinder, "Net Rope", new Vector3(side * (W * 0.5f + 0.1f), 0.9f + k * 0.8f, 0f), new Vector3(0.07f, L * 0.5f, 0.07f), rope, "plain", false, new Vector3(90f, 0f, 0f));
-            }
-            for (int k = 0; k < 10; k++)
-                P(r, PrimitiveType.Cylinder, "Net Rope", new Vector3(-W * 0.5f + 0.5f + k * (W - 1f) / 9f, 4.5f, 6.9f), new Vector3(0.07f, 2.4f, 0.07f), rope, "plain", false);
-        }
-
-        // 11. Tall rolling wave cushions.
-        static void Obs11Waves(Transform r, float L, float W)
-        {
-            var mesh = MeshKit.HeightPad("Waves", W, L, (x, z) => Top + 0.8f * (1f + Mathf.Sin(2f * Mathf.PI * (z + 0.35f * x) / 7.5f)), -0.6f);
-            MeshKit.Make("Wave Cushions", mesh, Blue, "quilt", true, r, Vector3.zero, Quaternion.identity, Vector3.one);
-            Foam(r, Vector3.zero, W, L);
-            for (int side = -1; side <= 1; side += 2)
-                Tube(r, new Vector3(side * (W * 0.5f - 0.1f), 0.6f, -L * 0.5f + 0.4f), new Vector3(side * (W * 0.5f - 0.1f), 0.6f, L * 0.5f - 0.4f), 0.7f, White);
-        }
-
-        // 12. A low tunnel with soft sweepers turning inside.
-        static void Obs12Sweepers(Transform r, float L, float W)
-        {
-            Deck(r, "Deck", 0f, 0f, W, L, Orange, false);
-            var mesh = MeshKit.Tunnel(W * 0.5f - 0.2f, 3.6f, L - 0.6f);
-            MeshKit.Make("Tunnel", mesh, Pink, "quilt", true, r, new Vector3(0f, Top, 0f), Quaternion.identity, Vector3.one);
-            for (int i = 0; i < 6; i++)
-                MeshKit.Make("Tunnel Ring", _ringMesh, White, "quilt", false, r, new Vector3(0f, Top, -L * 0.5f + 1.5f + i * (L - 3f) / 5f), Quaternion.identity, new Vector3(1.2f, 1.25f, 1.2f));
-
-            for (int i = 0; i < 2; i++)
-            {
-                var bar = P(r, PrimitiveType.Cube, "Soft Sweeper", new Vector3(0f, Top + 0.45f, i == 0 ? -4f : 4.5f), new Vector3(W - 1.2f, 0.7f, 0.6f), i == 0 ? Yellow : Teal, "quilt", false);
-                var spin = bar.AddComponent<RotatingBar>();
-                spin.degreesPerSecond = i == 0 ? 75f : -75f;
+                float z = -4.5f + i * 4.5f;
+                for (int side = -1; side <= 1; side += 2)
+                    Tube(r, new Vector3(side * (W * 0.5f - 0.6f), Top, z), new Vector3(side * (W * 0.5f - 0.6f), Top + 6.6f, z), 0.9f, Orange);
+                Tube(r, new Vector3(-W * 0.5f + 0.6f, Top + 6.5f, z), new Vector3(W * 0.5f - 0.6f, Top + 6.5f, z), 0.9f, Orange);
             }
         }
 
-        // 13. Zig-zag: big soft walls to wind between.
-        static void Obs13Zigzag(Transform r, float L, float W)
+        // 10. A slippery slide: climb the soft slope, then ride the slide down.
+        static void Obs10Slide(Transform r, float L, float W)
         {
-            Deck(r, "Deck", 0f, 0f, W, L, Blue);
-            Color[] colors = { Red, Yellow, Pink, Green, Orange, Purple };
-            for (int i = 0; i < 6; i++)
-            {
-                float z = -10f + i * 4f;
-                float x = (i % 2 == 0 ? -1f : 1f) * 1.8f;
-                P(r, PrimitiveType.Cube, "Zigzag Wall " + i, new Vector3(x, Top + 1.6f, z), new Vector3(8.4f, 3.2f, 1.3f), colors[i]);
-                Tube(r, new Vector3(x - 4.0f, Top + 3.2f, z), new Vector3(x + 4.0f, Top + 3.2f, z), 0.8f, White);
-            }
-        }
-
-        // 14. A big ramp up, over the top and down again.
-        static void Obs14UpAndOver(Transform r, float L, float W)
-        {
+            Platform(r, "Deck", 0f, 0f, W, L);
+            Rails(r, L, W);
             float topY = Top + 3.4f;
-            var mesh = MeshKit.HeightPad("UpAndOver", W, L, (x, z) =>
-            {
-                if (z < -8.4f) return Top;
-                if (z < -2f) return Mathf.Lerp(Top, topY, (z + 8.4f) / 6.4f);
-                if (z < 2f) return topY;
-                if (z < 8.4f) return Mathf.Lerp(topY, Top, (z - 2f) / 6.4f);
-                return Top;
-            }, -0.6f);
-            MeshKit.Make("Ramp", mesh, Orange, "quilt", true, r, Vector3.zero, Quaternion.identity, Vector3.one);
-            Foam(r, Vector3.zero, W, L);
-            for (int side = -1; side <= 1; side += 2)
-                Tube(r, new Vector3(side * (W * 0.5f - 0.1f), 0.7f, -L * 0.5f + 0.4f), new Vector3(side * (W * 0.5f - 0.1f), topY + 0.1f, -2f), 0.7f, White);
-            for (int side = -1; side <= 1; side += 2)
-                Tube(r, new Vector3(side * (W * 0.5f - 0.1f), topY + 0.1f, 2f), new Vector3(side * (W * 0.5f - 0.1f), 0.7f, L * 0.5f - 0.4f), 0.7f, White);
-            for (int side = -1; side <= 1; side += 2)
-                Tube(r, new Vector3(side * (W * 0.5f - 0.1f), topY + 0.1f, -2f), new Vector3(side * (W * 0.5f - 0.1f), topY + 0.1f, 2f), 0.7f, White);
-        }
+            var mesh = MeshKit.HeightPad("SlideHill", W - 1.2f, 7f, (x, z) => z < 1.8f ? Mathf.Lerp(Top, topY, (z + 3.5f) / 5.3f) : topY, -0.6f);
+            MeshKit.Make("Slide Hill", mesh, Blue, "plain", true, r, new Vector3(0f, 0f, -3.5f), Quaternion.identity, Vector3.one);
 
-        // 15. The finale: a steep inflatable climb up a tower. The slide starts at the top (see BuildFinaleSlide).
-        static void Obs15Finale(Transform r, float L, float W)
-        {
-            float topY = Top + 5.5f;
-            var mesh = MeshKit.HeightPad("Finale", W, L, (x, z) => z < 0f ? Mathf.Lerp(Top, topY, (z + L * 0.5f) / (L * 0.5f)) : topY, -0.6f);
-            MeshKit.Make("Climbing Hill", mesh, Pink, "quilt", true, r, Vector3.zero, Quaternion.identity, Vector3.one);
-            Foam(r, Vector3.zero, W, L);
-
-            // A giant ring over the top, with flags: you have nearly made it.
-            for (int side = -1; side <= 1; side += 2)
+            // The slide itself, from the top of the hill down to the end of this deck.
+            var path = new Vector3[6];
+            for (int i = 0; i < 6; i++)
             {
-                Tube(r, new Vector3(side * 4.2f, topY, L * 0.5f - 1.2f), new Vector3(side * 4.2f, topY + 4.6f, L * 0.5f - 1.2f), 0.9f, Yellow);
-                P(r, PrimitiveType.Cube, "Flag", new Vector3(side * 3.4f, topY + 5.3f, L * 0.5f - 1.2f), new Vector3(1.4f, 0.9f, 0.05f), side < 0 ? Red : Blue, "plain", false);
-            }
-            Tube(r, new Vector3(-4.2f, topY + 4.6f, L * 0.5f - 1.2f), new Vector3(4.2f, topY + 4.6f, L * 0.5f - 1.2f), 0.9f, Yellow);
-        }
-
-        // The slide that follows the finale: a long winding ride from the tower down to the sea, in front of the finish platform.
-        static void BuildFinaleSlide(float s0, float length)
-        {
-            const int count = 12;
-            var path = new Vector3[count];
-            for (int k = 0; k < count; k++)
-            {
-                float t = k / (count - 1f);
-                float s = s0 + length * t;
-                Vector3 pos = PathPos(s), dir = PathDir(s);
-                Vector3 right = new Vector3(dir.z, 0f, -dir.x);
-                float y = Mathf.Lerp(Top + 6.2f, 1.2f, Mathf.SmoothStep(0f, 1f, t));
-                path[k] = pos + right * (Mathf.Sin(t * Mathf.PI * 3f) * 3f) + Vector3.up * y;
+                float t = i / 5f;
+                float x = Mathf.Sin(t * Mathf.PI * 2f) * 2.2f;
+                path[i] = r.TransformPoint(new Vector3(x, Mathf.Lerp(topY + 0.5f, Top + 0.5f, Mathf.SmoothStep(0f, 1f, t)), Mathf.Lerp(-0.4f, L * 0.5f - 0.6f, t)));
             }
             CourseExtras.BuildSlideFromPath(path);
         }
 
-        // ------------------------------------------------------------------ hidden treasure along the route
-
-        static void PlaceChests(List<float> mids)
+        // 11. Balance section: three narrow planks, each doing something different.
+        static void Obs11Balance(Transform r, float L, float W)
         {
-            // A chest in a corner of an obstacle's frame, put in world space.
-            void Corner(string id, int obstacle, float x, float z, float y, float yaw)
-            {
-                float s = mids[obstacle];
-                Vector3 pos = PathPos(s), dir = PathDir(s);
-                Vector3 right = new Vector3(dir.z, 0f, -dir.x);
-                Vector3 world = pos + right * x + dir * z + Vector3.up * y;
-                CourseScenery.Chest(id, world, Yaw(dir) + yaw, false);
-            }
-            Corner("balls-corner", 6, 5.3f, 10.2f, Top, 200f);     // behind the giant balls
-            Corner("tunnel-end", 5, 2.4f, 7.0f, Top, 90f);          // at the back of the dark tunnel
-            Corner("zigzag-end", 12, -5.2f, 12.0f, Top, 20f);       // the last pocket of the zig-zag
-            Corner("net-back", 9, -3.6f, 6.4f, Top, 160f);          // behind the climbing frame
-            Corner("mattress-edge", 7, 3.8f, 9.6f, Top + 0.2f, 0f);   // on the last mattress
+            Soft(r, "Wobble 1", 0f, -4f, W, 3.8f, Top, Orange, White, 0.5f, 16f, 0.9f, 0.06f);
 
-            // And on tiny islets floating out in the water, beside the route (swim there).
-            Islet("islet-start", mids[0], 17f, 5.5f);
-            Islet("islet-middle", mids[7], -18f, 5.5f);
-            Islet("islet-late", mids[12], 19f, 5.5f);
+            var sway = new GameObject("Swaying Plank");
+            sway.transform.SetParent(r, false);
+            var box = sway.AddComponent<BoxCollider>();
+            box.size = new Vector3(W, 1.2f, 3.8f);
+            P(sway.transform, PrimitiveType.Capsule, "Plank", new Vector3(0f, -0.05f, 0f), new Vector3(W + 0.1f, 1.9f, 1.3f), Yellow, "quilt", false, new Vector3(90f, 0f, 0f));
+            var platform = sway.AddComponent<MovingPlatform>();
+            platform.pointA = r.position - r.right * 0.9f;
+            platform.pointB = r.position + r.right * 0.9f;
+            platform.period = 2.6f;
+
+            Soft(r, "Wobble 2", 0f, 4f, W, 3.8f, Top, Pink, White, 0.5f, 16f, 0.9f, 0.06f);
+            for (int side = -1; side <= 1; side += 2)
+                Tube(r, new Vector3(side * (W * 0.5f + 0.4f), 1.2f, -L * 0.5f), new Vector3(side * (W * 0.5f + 0.4f), 1.2f, L * 0.5f), 0.5f, Teal);
         }
 
-        static void Islet(string id, float s, float lateral, float diameter)
+        // 12. Padded arms turning round a centre pillar.
+        static void Obs12PaddedArms(Transform r, float L, float W)
         {
-            Vector3 pos = PathPos(s), dir = PathDir(s);
-            Vector3 right = new Vector3(dir.z, 0f, -dir.x);
-            Vector3 centre = pos + right * lateral;
-            var disc = P(null, PrimitiveType.Cylinder, "Islet", new Vector3(centre.x, 0f, centre.z), new Vector3(diameter, 0.6f, diameter), Teal);
-            P(null, PrimitiveType.Cylinder, "Foam", new Vector3(centre.x, 0.03f, centre.z), new Vector3(diameter + 1.2f, 0.02f, diameter + 1.2f), Foamy, "plain", false);
-            CourseScenery.Chest(id, new Vector3(centre.x, Top, centre.z), Yaw(-right), false);
+            Platform(r, "Deck", 0f, 0f, W, L);
+            Rails(r, L, W);
+
+            var holder = new GameObject("Padded Arms");
+            holder.transform.SetParent(r, false);
+            holder.transform.localPosition = new Vector3(0f, Top + 0.8f, 0f);
+            var armA = P(holder.transform, PrimitiveType.Capsule, "Arm A", Vector3.zero, new Vector3(1.0f, 4.4f, 1.0f), Orange, "quilt", false, new Vector3(0f, 0f, 90f));
+            var armB = P(holder.transform, PrimitiveType.Capsule, "Arm B", Vector3.zero, new Vector3(1.0f, 4.4f, 1.0f), Pink, "quilt", false, new Vector3(90f, 0f, 0f));
+            P(holder.transform, PrimitiveType.Cylinder, "Centre", new Vector3(0f, -0.2f, 0f), new Vector3(1.8f, 1.3f, 1.8f), Yellow, "quilt", false);
+            var spin = holder.AddComponent<RotatingBar>();
+            spin.degreesPerSecond = 42f;
+            spin.hitBoxes = new[] { armA.transform, armB.transform };
+            P(r, PrimitiveType.Cylinder, "Pillar", new Vector3(0f, Top + 1.0f, 0f), new Vector3(1.4f, 1.0f, 1.4f), Blue, "quilt", true);
+        }
+
+        // 13. A maze of rounded arches: each wall has one doorway, and the doorways alternate left and right.
+        static void Obs13ArchMaze(Transform r, float L, float W)
+        {
+            Platform(r, "Deck", 0f, 0f, W, L);
+            Rails(r, L, W);
+            Color[] colors = { Yellow, Pink, Teal, Orange };
+            float half = W * 0.5f - 0.7f;
+            for (int i = 0; i < 4; i++)
+            {
+                float z = -5.4f + i * 3.6f;
+                float open = (i % 2 == 0 ? -1f : 1f) * 2.4f;     // where the doorway is
+                float doorHalf = 1.8f;
+                Color c = colors[i];
+
+                float leftEdge = -half, rightEdge = half;
+                float leftWidth = (open - doorHalf) - leftEdge, rightWidth = rightEdge - (open + doorHalf);
+                P(r, PrimitiveType.Cube, "Arch Wall", new Vector3(leftEdge + leftWidth * 0.5f, Top + 2.2f, z), new Vector3(leftWidth, 4.4f, 1.2f), c, "quilt");
+                P(r, PrimitiveType.Cube, "Arch Wall", new Vector3(rightEdge - rightWidth * 0.5f, Top + 2.2f, z), new Vector3(rightWidth, 4.4f, 1.2f), c, "quilt");
+                P(r, PrimitiveType.Cube, "Arch Top", new Vector3(open, Top + 3.5f, z), new Vector3(doorHalf * 2f, 1.9f, 1.2f), c, "quilt");
+                MeshKit.Make("Arch Ring", _ringMesh, White, "quilt", false, r, new Vector3(open, Top + 1.5f, z - 0.62f), Quaternion.identity, new Vector3(0.68f, 0.95f, 1f));
+            }
+        }
+
+        // 14. The final bridge: long, soft and wavy, with bouncy planks.
+        static void Obs14FinalBridge(Transform r, float L, float W)
+        {
+            Color[] colors = { Orange, Yellow, Pink, Teal, Green };
+            int n = 15;
+            for (int i = 0; i < n; i++)
+            {
+                float z = -L * 0.5f + 1f + i * 2f;
+                var plank = Soft(r, "Final Plank " + i, 0f, z, W, 1.9f, Top, colors[i % colors.Length], White, 0.45f, 17f, 0.8f, 0.3f);
+                if (i % 5 == 2)
+                {
+                    var pad = new GameObject("Bounce Trigger");
+                    pad.transform.SetParent(r, false);
+                    pad.transform.localPosition = new Vector3(0f, Top + 0.15f, z);
+                    var box = pad.AddComponent<BoxCollider>();
+                    box.size = new Vector3(W - 0.4f, 0.3f, 1.7f);
+                    box.isTrigger = true;
+                    pad.AddComponent<BouncePad>().bounceVelocity = 11f;
+                    P(r, PrimitiveType.Cube, "Bounce Arrow", new Vector3(0f, Top + 0.62f, z), new Vector3(W - 1f, 0.03f, 1.0f), Red, "plain", false);
+                }
+            }
+            for (int side = -1; side <= 1; side += 2)
+                Tube(r, new Vector3(side * (W * 0.5f + 0.6f), 1.5f, -L * 0.5f), new Vector3(side * (W * 0.5f + 0.6f), 1.5f, L * 0.5f), 0.6f, Pink);
+        }
+
+        // ------------------------------------------------------------------ fish and hidden chests
+
+        static void BuildFish(FishSpecies cod, FishSpecies salmon, FishSpecies clown)
+        {
+            // Fish leap across the route from the open water beside it.
+            string[] where = { "2 Wobble bridge", "4 Bouncing pillars", "6 Floating logs", "9 Swinging balls", "12 Rotating padded arms", "14 Final bridge" };
+            var pools = new[] { new[] { cod, salmon }, new[] { salmon, clown, cod }, new[] { clown, cod } };
+            int k = 0;
+            foreach (var name in where)
+            {
+                var s = _layout.sections.Find(x => x.name == name);
+                if (s == null) continue;
+                Vector3 right = Vector3.Cross(Vector3.up, s.direction);
+                Vector3 side = Vector3.Dot(s.center - _layout.courseCenter, right) >= 0f ? right : -right;
+                float half = Mathf.Max(s.width, 8f) * 0.5f;
+                float offset = half + 3.5f;
+                Vector3 zone = s.center + side * offset + Vector3.up * 0.3f;
+                Vector3 across = -side;
+                Vector3 size = new Vector3(Mathf.Abs(s.direction.x) * 10f + Mathf.Abs(s.direction.z), 0f, Mathf.Abs(s.direction.z) * 10f + Mathf.Abs(s.direction.x));
+                S3SceneBuilder.FishArea("Fish Area " + (k + 1), pools[k % pools.Length], zone, size, Mathf.Atan2(across.x, across.z) * Mathf.Rad2Deg, 15f,
+                    offset + half + 1f, offset + half + 3.5f, 11 * (k + 1));
+                k++;
+            }
+        }
+
+        static void BuildChests()
+        {
+            // A chest in a corner of an obstacle, placed in world space.
+            void Corner(string id, string section, float x, float z, float y, float yaw)
+            {
+                var s = _layout.sections.Find(q => q.name == section);
+                if (s == null) return;
+                Vector3 right = Vector3.Cross(Vector3.up, s.direction);
+                Vector3 world = s.center + right * x + s.direction * z + Vector3.up * y;
+                CourseScenery.Chest(id, world, Mathf.Atan2(s.direction.x, s.direction.z) * Mathf.Rad2Deg + yaw, false);
+            }
+            Corner("pillars-corner", "4 Bouncing pillars", 4.1f, -6.2f, Top, 0f);
+            Corner("wall-top", "5 Climbing wall", -2f, 1.2f, Top + 3.0f, 90f);       // on top of the climbing wall
+            Corner("balls-corner", "9 Swinging balls", 3.9f, 7f, Top, 200f);
+            Corner("arch-end", "13 Arch maze", -3.9f, 7.2f, Top, 160f);
+            Corner("arms-corner", "12 Rotating padded arms", 3.9f, -7.2f, Top, 20f);
+
+            // And on little islets floating in the water between the lanes (swim there, then back).
+            Islet("islet-north", new Vector3(-5f, 0f, 45f));
+            Islet("islet-middle", new Vector3(-15f, 0f, 23f));
+            Islet("islet-south", new Vector3(10f, 0f, 2f));
+        }
+
+        static void Islet(string id, Vector3 centre)
+        {
+            var disc = P(null, PrimitiveType.Cylinder, "Islet", new Vector3(centre.x, 0f, centre.z), new Vector3(5.5f, 0.6f, 5.5f), Teal, "quilt");
+            P(null, PrimitiveType.Cylinder, "Foam", new Vector3(centre.x, 0.03f, centre.z), new Vector3(6.7f, 0.02f, 6.7f), Foamy, "plain", false);
+            Tube(null, new Vector3(centre.x, 0.75f, centre.z - 2f), new Vector3(centre.x, 0.75f, centre.z + 2f), 0.5f, White);
+            CourseScenery.Chest(id, new Vector3(centre.x, Top, centre.z), 0f, false);
         }
     }
 }

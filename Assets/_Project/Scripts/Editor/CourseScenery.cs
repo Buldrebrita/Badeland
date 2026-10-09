@@ -14,6 +14,8 @@ namespace Badeland.EditorTools
         const float QuayZ = -30f;     // the water ends here; the land begins
         const float LandTop = 1.6f;
 
+        static float[] _crowdXs = { 0f };
+
         static readonly Color Sand = new Color(0.95f, 0.85f, 0.6f);
         static readonly Color Concrete = new Color(0.78f, 0.78f, 0.8f);
 
@@ -49,14 +51,14 @@ namespace Badeland.EditorTools
         public static void Build(InflatableCourse.Layout layout)
         {
             var rng = new System.Random(2024);
-            float r = layout.radius;
+            float r = 90f; // half the width of the beach
+            _crowdXs = new[] { layout.arenaCenter.x, -12f, -48f };
 
             BuildLand();
             BuildBeach(rng, r);
             BuildMarina(rng);
             BuildStands(r);
             BuildCrowds(rng, r);
-            BuildArches(layout);
             BuildTown(rng);
             BuildBreakwaters(r);
             BuildFerrisWheel(r);
@@ -95,7 +97,7 @@ namespace Badeland.EditorTools
             {
                 float x = F(rng, -r - 20f, r + 20f);
                 float z = QuayZ - F(rng, 6f, 28f);
-                if (Mathf.Abs(Mathf.Abs(x) - r) < 8f && z > QuayZ - 12f) continue; // keep the front of the start and finish clear for the crowds
+                if (NearCrowd(x, 8f) && z > QuayZ - 12f) continue; // keep the front of the course clear for the crowds
                 Color c = Pick(rng, umbrellas);
                 Parasol(root, new Vector3(x, LandTop, z), c);
                 Lounger(root, new Vector3(x - 1.4f, LandTop, z + 0.5f), 10f, Pick(rng, Color.white, c));
@@ -128,6 +130,12 @@ namespace Badeland.EditorTools
                 Palm(root, new Vector3(-r - 20f + i * (2f * r + 40f) / 25f, LandTop, QuayZ - 32.5f), rng);
             for (int i = 0; i < 40; i++)
                 LampPost(root, new Vector3(-r - 20f + i * (2f * r + 40f) / 39f, LandTop, QuayZ - 39.5f));
+        }
+
+        static bool NearCrowd(float x, float distance)
+        {
+            foreach (float cx in _crowdXs) if (Mathf.Abs(x - cx) < distance) return true;
+            return false;
         }
 
         static Color Skin(System.Random rng) => Pick(rng, new Color(1f, 0.82f, 0.68f), new Color(0.9f, 0.68f, 0.5f), new Color(0.65f, 0.45f, 0.3f), new Color(0.42f, 0.28f, 0.2f), new Color(1f, 0.88f, 0.78f));
@@ -282,7 +290,7 @@ namespace Badeland.EditorTools
             Color[] shirts = { new Color(1f, 0.35f, 0.4f), new Color(1f, 0.85f, 0.2f), new Color(0.3f, 0.8f, 1f), new Color(0.5f, 1f, 0.5f), new Color(1f, 0.55f, 0.15f), new Color(0.9f, 0.4f, 0.9f), Color.white };
 
             // Packed crowds right behind the quay edge, by the start and the finish: they cheer.
-            foreach (float cx in new[] { -r, r })
+            foreach (float cx in _crowdXs)
                 for (int row = 0; row < 3; row++)
                     for (int i = 0; i < 12; i++)
                     {
@@ -295,7 +303,7 @@ namespace Badeland.EditorTools
             for (int i = 0; i < 46; i++)
             {
                 float x = F(rng, -r - 30f, r + 30f);
-                if (Mathf.Abs(Mathf.Abs(x) - r) < 14f) continue;
+                if (NearCrowd(x, 14f)) continue;
                 Person(root, new Vector3(x, LandTop, QuayZ - F(rng, 2f, 6f)), F(rng, -30f, 30f), Pick(rng, shirts), new Color(0.25f, 0.3f, 0.5f), Skin(rng), rng.NextDouble() < 0.6, false);
             }
         }
@@ -340,16 +348,11 @@ namespace Badeland.EditorTools
 
         // ------------------------------------------------------------------ the start and finish arches
 
-        static void BuildArches(InflatableCourse.Layout layout)
-        {
-            Arch("Start Arch", new Vector3(layout.startCenter.x, 0f, 0f), false);
-            Arch("Finish Arch", new Vector3(layout.arenaCenter.x, 0f, 0f), true);
-        }
-
-        static void Arch(string name, Vector3 center, bool finish)
+        /// <summary>A big inflatable arch across the route (the start arch or the finish arch).</summary>
+        public static void Arch(string name, Vector3 center, bool finish, Quaternion rotation)
         {
             var root = new GameObject(name).transform;
-            root.position = center;
+            root.SetPositionAndRotation(center, rotation);
             for (int side = -1; side <= 1; side += 2)
                 Prim(root, PrimitiveType.Capsule, "Arch Pillar", new Vector3(side * 9f, 3.8f, -1.5f), new Vector3(1.4f, 3.6f, 1.4f), finish ? Color.white : new Color(1f, 0.85f, 0.15f), "quilt");
             Prim(root, PrimitiveType.Capsule, "Arch Beam", new Vector3(0f, 7.4f, -1.5f), new Vector3(1.4f, 9.2f, 1.4f), finish ? Color.white : new Color(1f, 0.85f, 0.15f), "quilt", false, new Vector3(0f, 0f, 90f));
@@ -416,15 +419,15 @@ namespace Badeland.EditorTools
             var root = new GameObject("Breakwaters").transform;
             foreach (float side in new[] { -1f, 1f })
             {
-                float x = side * (r + 48f);
+                float x = side < 0f ? -105f : 95f;
                 var rng = new System.Random(side > 0 ? 1 : 2);
-                Prim(root, PrimitiveType.Cube, "Breakwater", new Vector3(x, 0.8f, 55f), new Vector3(10f, 3.6f, 170f), new Color(0.6f, 0.58f, 0.58f), "stone", true);
+                Prim(root, PrimitiveType.Cube, "Breakwater", new Vector3(x, 0.8f, 45f), new Vector3(10f, 3.6f, 170f), new Color(0.6f, 0.58f, 0.58f), "stone", true);
                 for (int i = 0; i < 40; i++)
-                    Prim(root, PrimitiveType.Sphere, "Boulder", new Vector3(x + F(rng, -7f, 7f), F(rng, 0f, 1.5f), F(rng, -28f, 140f)), Vector3.one * F(rng, 2f, 4.5f), new Color(0.5f, 0.48f, 0.5f), "stone");
+                    Prim(root, PrimitiveType.Sphere, "Boulder", new Vector3(x + F(rng, -7f, 7f), F(rng, 0f, 1.5f), F(rng, -35f, 125f)), Vector3.one * F(rng, 2f, 4.5f), new Color(0.5f, 0.48f, 0.5f), "stone");
             }
 
             // The lighthouse at the end of the east breakwater.
-            Vector3 p = new Vector3(r + 48f, 2.6f, 145f);
+            Vector3 p = new Vector3(95f, 2.6f, 125f);
             for (int i = 0; i < 5; i++)
                 Prim(root, PrimitiveType.Cylinder, "Lighthouse", p + new Vector3(0f, 3f + i * 6f, 0f), new Vector3(7f - i * 0.7f, 3f, 7f - i * 0.7f), i % 2 == 0 ? Color.white : new Color(0.9f, 0.2f, 0.2f), "plain", true);
             Prim(root, PrimitiveType.Cylinder, "Gallery", p + new Vector3(0f, 31.5f, 0f), new Vector3(6f, 0.4f, 6f), new Color(0.2f, 0.2f, 0.25f));
@@ -437,7 +440,7 @@ namespace Badeland.EditorTools
 
         static void BuildFerrisWheel(float r)
         {
-            Vector3 centre = new Vector3(r * 0.62f, LandTop + 28f, QuayZ - 86f);
+            Vector3 centre = new Vector3(60f, LandTop + 28f, QuayZ - 86f);
             var root = new GameObject("Ferris Wheel").transform;
             root.position = centre;
 
