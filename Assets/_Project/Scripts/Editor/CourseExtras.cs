@@ -35,11 +35,11 @@ namespace Badeland.EditorTools
         // ------------------------------------------------------------------ the finale slide
 
         /// <summary>The water slide: a smooth track following the given points, with rails and support pillars.</summary>
-        public static void BuildSlideFromPath(Vector3[] path)
+        public static void BuildSlideFromPath(Vector3[] path, string tag = "")
         {
             var orange = new Color(1f, 0.55f, 0.1f);
 
-            var root = new GameObject("Water Slide");
+            var root = new GameObject("Water Slide " + tag);
             var slide = root.AddComponent<WaterSlide>();
 
             var points = new Transform[path.Length];
@@ -55,9 +55,9 @@ namespace Badeland.EditorTools
 
             // The track is three smooth meshes (a floor and two rails) that follow the curve without any gaps.
             float railX = slide.laneHalfWidth + 0.2f + 0.18f;
-            BuildSlideMesh(root.transform, slide, "Slide Floor", slide.laneHalfWidth + 0.2f, 0.125f, new Vector2(0f, -0.125f), new Color(0.15f, 0.55f, 1f));
-            BuildSlideMesh(root.transform, slide, "Slide Rail Left", 0.18f, 0.45f, new Vector2(-railX, 0.35f), orange);
-            BuildSlideMesh(root.transform, slide, "Slide Rail Right", 0.18f, 0.45f, new Vector2(railX, 0.35f), orange);
+            BuildSlideMesh(root.transform, slide, "Slide Floor " + tag, slide.laneHalfWidth + 0.2f, 0.125f, new Vector2(0f, -0.125f), new Color(0.15f, 0.55f, 1f));
+            BuildSlideMesh(root.transform, slide, "Slide Rail Left " + tag, 0.18f, 0.45f, new Vector2(-railX, 0.35f), orange);
+            BuildSlideMesh(root.transform, slide, "Slide Rail Right " + tag, 0.18f, 0.45f, new Vector2(railX, 0.35f), orange);
 
             // Support pillars now and then.
             const float spacing = 7f;

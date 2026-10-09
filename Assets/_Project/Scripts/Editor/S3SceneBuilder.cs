@@ -116,6 +116,8 @@ namespace Badeland.EditorTools
                 respawn.spawnPoints[i] = section.start + section.direction * 1.6f + Vector3.up * 1.8f;
             }
 
+            respawn.maxZ = layout.areaMax.y + 40f;
+
             // ---- The beach, the marina, the crowds and the town behind them.
             CourseScenery.Build(layout);
 

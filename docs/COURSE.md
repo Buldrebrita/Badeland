@@ -7,6 +7,7 @@ near the beach. Obstacles are joined end to end; square corner pads where the ro
 1 Start platform, 2 Wobble bridge, 3 Curved tunnel, 4 Bouncing pillars, 5 Climbing wall, 6 Floating logs,
 7 Rotating platform, 8 Trampoline, 9 Swinging balls, 10 Slide, 11 Balance section, 12 Rotating padded arms,
 13 Arch maze, 14 Final bridge, 15 Finish platform (the monster appears here).
+Plus ten harder lanes (A1-A5, B1-B5) at the start: zigzag pads, sweepers, ferry, springy mattresses, narrow beam, spinning discs, log gauntlet, ball run, steep slide, wobble steps.
 
 Code: `InflatableCourse.cs` (route and obstacles), `CourseScenery.cs` (beach, marina, crowds, town, lighthouse, ferris wheel),
 `MeshKit.cs`, `CourseExtras.cs` (monster, alarm, trap, slide, look). Scripts: `SoftPlatform`, `RollingLog`, `SpinningPlatform`,
