@@ -24,3 +24,14 @@ MonoBehaviour:
   coyoteTime: 0.12
   jumpBufferTime: 0.15
   maxFallSpeed: 30
+  swimSpeed: 3.2
+  swimAcceleration: 14
+  swimDeceleration: 18
+  swimEnterDepth: 1.2
+  swimExitDepth: 0.8
+  floatDepth: 1.3
+  buoyancyStrength: 30
+  buoyancyDamping: 7
+  diveDepth: 3.5
+  diveSpeed: 5
+  surfaceHopHeight: 2.4
