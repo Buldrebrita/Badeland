@@ -360,6 +360,12 @@ namespace Badeland.EditorTools
             var heavy = S3SceneBuilder.Ball("Heavy Stone", new Vector3(14f, TerHeight + 0.8f, 16.5f), 1.6f, new Color(1f, 0.6f, 0.2f), true);
             GrayboxMaterials.TintStone(heavy, new Color(0.75f, 0.5f, 0.3f));
             heavy.AddComponent<Carryable>();
+
+            // A second heavy stone by the lagoon shore, so one person alone can hold down both buttons.
+            float sx = -12f, sz = -5f;
+            var heavy2 = S3SceneBuilder.Ball("Heavy Stone 2", new Vector3(sx, Height(sx, sz) + 0.8f, sz), 1.6f, new Color(1f, 0.6f, 0.2f), true);
+            GrayboxMaterials.TintStone(heavy2, new Color(0.75f, 0.5f, 0.3f));
+            heavy2.AddComponent<Carryable>();
         }
 
         static PressurePlate VillagePlate;

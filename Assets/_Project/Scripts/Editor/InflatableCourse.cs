@@ -1042,7 +1042,7 @@ namespace Badeland.EditorTools
             Pylon(r.TransformPoint(new Vector3(2f, 0f, 0f))); Pylon(r.TransformPoint(new Vector3(-2f, 0f, 0f)));
         }
 
-        // D4. Small crumbling stones spaced just far enough apart that you must keep moving.
+        // D4. Small round stones spaced just far enough apart (they stay put when you land on them).
         static void ObsD4HopStones(Transform r, float L, float W)
         {
             Color[] colors = { Pink, Yellow, Teal, Orange, Green };
@@ -1054,8 +1054,6 @@ namespace Badeland.EditorTools
                 holder.transform.SetParent(r, false);
                 holder.transform.localPosition = new Vector3(x, 0f, z);
                 P(holder.transform, PrimitiveType.Cylinder, "Stone", Vector3.zero, new Vector3(2.2f, 0.6f, 2.2f), colors[i]);
-                var crumble = holder.AddComponent<CrumblingPlatform>();
-                crumble.standSeconds = 0.35f;
                 PylonAt(r, x, z);
             }
         }
@@ -1098,11 +1096,11 @@ namespace Badeland.EditorTools
                 Vector3 side = Vector3.Dot(s.center - _layout.courseCenter, right) >= 0f ? right : -right;
                 float half = Mathf.Max(s.width, 8f) * 0.5f;
                 float offset = half + 3.5f;
-                Vector3 zone = new Vector3(s.center.x, 0.3f, s.center.z) + side * offset;
+                Vector3 zone = new Vector3(s.center.x, Lift - 0.4f, s.center.z) + side * offset; // at the height of the course, so the players can reach them
                 Vector3 across = -side;
                 Vector3 size = new Vector3(Mathf.Abs(s.direction.x) * 10f + Mathf.Abs(s.direction.z), 0f, Mathf.Abs(s.direction.z) * 10f + Mathf.Abs(s.direction.x));
                 S3SceneBuilder.FishArea("Fish Area " + (k + 1), pools[k % pools.Length], zone, size, Mathf.Atan2(across.x, across.z) * Mathf.Rad2Deg, 15f,
-                    offset + half + 1f, offset + half + 3.5f, 11 * (k + 1));
+                    offset + half + 1f, offset + half + 3.5f, 11 * (k + 1), 2.0f, 2.8f);
                 k++;
             }
         }

@@ -18,6 +18,7 @@ namespace Badeland.World
         public Vector3[] spawnPoints;
 
         [Min(0.5f)] public float swimSecondsBeforeReturn = 2.2f;
+        [Min(0f)] public float hoverSeconds = 2f;
         public float maxZ = 90f; // beyond this is somewhere else on purpose (the secret room)
 
         readonly Dictionary<PlayerController, int> _progress = new Dictionary<PlayerController, int>();
@@ -62,7 +63,9 @@ namespace Badeland.World
                     {
                         _swimming[p] = 0f;
                         Vector3 yawDir = directions[progress];
-                        p.Teleport(spawnPoints[progress], Mathf.Atan2(yawDir.x, yawDir.z) * Mathf.Rad2Deg);
+                        // Back on the course, floating above it for two seconds before dropping in.
+                        p.Teleport(spawnPoints[progress] + Vector3.up * 1.6f, Mathf.Atan2(yawDir.x, yawDir.z) * Mathf.Rad2Deg);
+                        p.Hover(hoverSeconds);
                     }
                 }
                 else _swimming[p] = 0f;

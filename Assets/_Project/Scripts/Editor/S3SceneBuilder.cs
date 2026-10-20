@@ -228,7 +228,7 @@ namespace Badeland.EditorTools
         }
 
         internal static void FishArea(string name, FishSpecies[] pool, Vector3 zoneCenter, Vector3 zoneSize, float heading,
-            float spread, float minDistance, float maxDistance, int seed)
+            float spread, float minDistance, float maxDistance, int seed, float minArc = 2.5f, float maxArc = 4.5f)
         {
             var root = new GameObject(name);
             root.transform.position = zoneCenter;
@@ -251,6 +251,8 @@ namespace Badeland.EditorTools
             jumper.minDistance = minDistance;
             jumper.maxDistance = maxDistance;
             jumper.seed = seed;
+            jumper.minArcHeight = minArc;
+            jumper.maxArcHeight = maxArc;
         }
 
         // A flag gate: two flag poles 8 m apart with a banner between them, facing the direction of travel.

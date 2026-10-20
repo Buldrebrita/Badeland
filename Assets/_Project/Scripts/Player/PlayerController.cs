@@ -40,6 +40,21 @@ namespace Badeland.Player
         public static IReadOnlyList<PlayerController> All => AllPlayers;
 
         float _knockTimer;
+        float _hover;
+        float _hoverY;
+
+        /// <summary>True while the player floats in the air after being put back on the course.</summary>
+        public bool IsHovering => _hover > 0f;
+
+        /// <summary>Float where you are for a few seconds (no falling, no steering, nothing can hit you), then drop.</summary>
+        public void Hover(float seconds)
+        {
+            _hover = seconds;
+            _hoverY = transform.position.y;
+            _horizontalVelocity = Vector3.zero;
+            _verticalVelocity = 0f;
+            _jumping = false;
+        }
         float _dizzy;
 
         /// <summary>1 right after being hit, fading to 0 over three seconds. The player is slower and the camera sways while it is above 0.</summary>
@@ -111,6 +126,18 @@ namespace Badeland.Player
             if (IsDead)
             {
                 if (IsDying) UpdateDying(dt); else UpdateGhost(dt);
+                return;
+            }
+
+            if (_hover > 0f)
+            {
+                _hover -= dt;
+                IsGrounded = false;
+                IsSwimming = false;
+                float bob = 0.15f * Mathf.Sin(Time.time * 5f);
+                float target = _hoverY + bob;
+                _cc.Move(new Vector3(0f, target - transform.position.y, 0f));
+                if (_hover <= 0f) _verticalVelocity = 0f;
                 return;
             }
             _knockTimer -= dt;
@@ -359,7 +386,7 @@ namespace Badeland.Player
         /// <summary>Hit by an obstacle: shoved sideways and up. Ignored for a moment after a hit so it cannot repeat every frame.</summary>
         public void Knock(Vector3 horizontalVelocity, float upwardVelocity)
         {
-            if (_knockTimer > 0f || Invulnerable || IsDead) return;
+            if (_knockTimer > 0f || Invulnerable || IsDead || _hover > 0f) return;
             _knockTimer = 0.6f;
             _dizzy = DizzySeconds;
             horizontalVelocity.y = 0f;
