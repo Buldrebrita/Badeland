@@ -115,15 +115,15 @@ namespace Badeland.EditorTools
             var glowLights = new List<Light>();
 
             BuildMood();
-            RenderSettings.fogColor = new Color(0.03f, 0.07f, 0.14f);
-            RenderSettings.ambientLight = new Color(0.2f, 0.24f, 0.4f);
-            BuildGround();
+                        BuildGround();
             BuildWalls();
             BuildLivingWalls(rng, glowLights);
             BuildEye();
             BuildProps(rng, glowLights);
             BuildMushrooms(rng, glowLights);
             BuildJellyfish(rng);
+            MeshKit.SetFolder(MeshFolder);
+            Decor(rng, glowLights, new[] { new Vector3(0f, -2.6f, 0f), new Vector3(10f, -2.6f, 7f), new Vector3(10f, -2.6f, -7f), new Vector3(20f, -2.6f, 0f), new Vector3(FallPool.x, -1.8f, FallPool.y) });
 
             var lagoon = BuildLagoon();
             BuildShip(glowLights);

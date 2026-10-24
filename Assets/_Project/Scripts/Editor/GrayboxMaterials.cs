@@ -28,6 +28,55 @@ namespace Badeland.EditorTools
         /// <summary>Wood grain (docks, bridges, huts, ships).</summary>
         public static void TintWood(GameObject go, Color color) => Apply(go, color, false, 0f, "wood");
 
+        /// <summary>See-through and glowing at once (jellyfish bells, the glass of a canopy, soft halos around lights).</summary>
+        public static void TintGlowTransparent(GameObject go, Color color, float strength) => Apply(go, color, true, strength, null);
+
+        /// <summary>Falling water: a glowing, see-through material with vertical streaks (use together with UVScroll).</summary>
+        public static void TintWaterfall(GameObject go)
+        {
+            Directory.CreateDirectory(Folder);
+            string path = Folder + "/M_Badeland_Waterfall.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(Template());
+                SetColor(material, new Color(0.8f, 0.96f, 1f, 0.85f));
+                string textureProperty = TextureProperty(material);
+                if (textureProperty != null) material.SetTexture(textureProperty, WaterfallTexture());
+                MakeTransparent(material);
+                MakeGlow(material, new Color(0.4f, 0.8f, 1f), 0.9f);
+                AssetDatabase.CreateAsset(material, path);
+            }
+            go.GetComponent<Renderer>().sharedMaterial = material;
+        }
+
+        static Texture2D WaterfallTexture()
+        {
+            string folder = "Assets/_Project/Art/Textures";
+            string path = folder + "/Waterfall.png";
+            Directory.CreateDirectory(folder);
+            if (!File.Exists(path))
+            {
+                const int w = 64, h = 256;
+                const float tau = Mathf.PI * 2f;
+                var tex = new Texture2D(w, h, TextureFormat.RGBA32, true);
+                for (int y = 0; y < h; y++)
+                    for (int x = 0; x < w; x++)
+                    {
+                        float u = x / (float)w, v = y / (float)h;
+                        float streak = 0.5f + 0.25f * Mathf.Sin(tau * (3f * u + 0.15f * Mathf.Sin(tau * 2f * v)))
+                                            + 0.25f * Mathf.Sin(tau * (7f * u + 0.3f * Mathf.Sin(tau * 3f * v + 1f)) + 1f);
+                        float foam = Mathf.SmoothStep(0.55f, 1f, streak);
+                        tex.SetPixel(x, y, new Color(0.7f + 0.3f * foam, 0.9f + 0.1f * foam, 1f, Mathf.Clamp01(0.3f + 0.7f * streak)));
+                    }
+                tex.Apply();
+                File.WriteAllBytes(path, tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+                AssetDatabase.ImportAsset(path);
+            }
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
+
         /// <summary>A building with rows of windows (the grid repeats every three metres up the wall).</summary>
         public static void TintBuilding(GameObject go, Color color) => Apply(go, color, false, 0f, "building");
 

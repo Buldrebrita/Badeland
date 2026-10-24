@@ -12,12 +12,22 @@ namespace Badeland.EditorTools
     /// </summary>
     public static class MeshKit
     {
-        const string Folder = "Assets/_Project/Art/Environment/Course";
+        const string CourseFolder = "Assets/_Project/Art/Environment/Course";
+        static string Folder = CourseFolder;
         static int _count;
+
+        /// <summary>Save the next meshes in another folder (the folder must belong to the scene being built). Reset() goes back to the course folder.</summary>
+        public static void SetFolder(string folder)
+        {
+            Folder = folder;
+            Directory.CreateDirectory(Folder);
+            _count = 1000;
+        }
 
         /// <summary>Start fresh: removes the meshes of an earlier build.</summary>
         public static void Reset()
         {
+            Folder = CourseFolder;
             if (Directory.Exists(Folder)) AssetDatabase.DeleteAsset(Folder);
             Directory.CreateDirectory(Folder);
             _count = 0;

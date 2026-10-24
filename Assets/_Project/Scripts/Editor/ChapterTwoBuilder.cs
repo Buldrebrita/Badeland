@@ -106,6 +106,8 @@ namespace Badeland.EditorTools
             BuildNotes();
             BuildReviveZones();
             BuildJellyfish(rng);
+            MeshKit.SetFolder(MeshFolder);
+            Decor(rng, glowLights, new[] { new Vector3(8f, -2.6f, 0f), new Vector3(18f, -2.6f, 5f), new Vector3(18f, -2.6f, -5f) });
             BuildExitDoor(glowLights);
             BuildBreathing(lake, glowLights);
 
@@ -840,39 +842,6 @@ namespace Badeland.EditorTools
         }
 
         // ------------------------------------------------------------------ jellyfish
-
-        static void BuildJellyfish(System.Random rng)
-        {
-            Color[] colors = { new Color(0.4f, 0.9f, 1f, 0.5f), new Color(1f, 0.5f, 0.9f, 0.5f), new Color(0.6f, 1f, 0.7f, 0.5f) };
-            int placed = 0;
-            for (int tries = 0; tries < 200 && placed < 12; tries++)
-            {
-                float x = Cx - Rx + 4f + (float)rng.NextDouble() * (Rx * 2f - 8f);
-                float z = -Rz + 4f + (float)rng.NextDouble() * (Rz * 2f - 8f);
-                if (!Inside(x, z, 7f)) continue;
-                placed++;
-
-                Color c = colors[rng.Next(colors.Length)];
-                float y = 5f + (float)rng.NextDouble() * 7f;
-
-                var jelly = S3SceneBuilder.Ball("Jellyfish", new Vector3(x, y, z), 2.2f, c, false);
-                jelly.transform.localScale = new Vector3(2.2f, 1.5f, 2.2f);
-                GrayboxMaterials.TintWater(jelly, c);
-                for (int t = 0; t < 4; t++)
-                {
-                    float angle = t * Mathf.PI * 0.5f;
-                    var tentacle = S3SceneBuilder.Cyl("Tentacle", new Vector3(x + Mathf.Cos(angle) * 0.5f, y - 1.6f, z + Mathf.Sin(angle) * 0.5f), new Vector3(0.08f, 1.0f, 0.08f), new Color(c.r, c.g, c.b, 1f));
-                    Object.DestroyImmediate(tentacle.GetComponent<Collider>());
-                    tentacle.transform.SetParent(jelly.transform, true);
-                }
-
-                var drift = jelly.AddComponent<Drifter>();
-                drift.radius = 2f + (float)rng.NextDouble() * 3f;
-                drift.speed = 0.08f + (float)rng.NextDouble() * 0.12f;
-                drift.phase = (float)rng.NextDouble() * 6f;
-                drift.bobAmplitude = 0.5f;
-            }
-        }
 
         // ------------------------------------------------------------------ the great door
 
