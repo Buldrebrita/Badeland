@@ -494,53 +494,8 @@ namespace Badeland.EditorTools
             RenderSettings.ambientGroundColor = new Color(0.42f, 0.5f, 0.55f);
             RenderSettings.fog = false;
 
-            // Post-processing: a little bloom, richer colours, a soft vignette. Only works when URP is the active render
-            // pipeline; without it Unity ignores it, so it is skipped (see docs/S6_MONSTER_AND_MORE.md).
-            if (GraphicsSettings.currentRenderPipeline == null)
-            {
-                Debug.Log("Badeland: URP is not the active render pipeline in this project, so the post-processing look is skipped.");
-                return;
-            }
-
-            const string path = "Assets/_Project/Settings/PostProcessing.asset";
-            var profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(path);
-            if (profile == null)
-            {
-                profile = ScriptableObject.CreateInstance<VolumeProfile>();
-                AssetDatabase.CreateAsset(profile, path);
-
-                var bloom = AddTo<Bloom>(profile);
-                bloom.threshold.Override(1f);
-                bloom.intensity.Override(0.35f);
-                bloom.scatter.Override(0.6f);
-
-                var tone = AddTo<Tonemapping>(profile);
-                tone.mode.Override(TonemappingMode.ACES);
-
-                var adjust = AddTo<ColorAdjustments>(profile);
-                adjust.postExposure.Override(0.15f);
-                adjust.contrast.Override(10f);
-                adjust.saturation.Override(18f);
-
-                var vignette = AddTo<Vignette>(profile);
-                vignette.intensity.Override(0.18f);
-                vignette.smoothness.Override(0.5f);
-
-                EditorUtility.SetDirty(profile);
-                AssetDatabase.SaveAssets();
-            }
-
-            var volumeObject = new GameObject("Post Processing");
-            var volume = volumeObject.AddComponent<Volume>();
-            volume.isGlobal = true;
-            volume.sharedProfile = profile;
-
-            if (c.camera != null)
-            {
-                var data = c.camera.GetComponent<UniversalAdditionalCameraData>();
-                if (data == null) data = c.camera.gameObject.AddComponent<UniversalAdditionalCameraData>();
-                data.renderPostProcessing = true;
-            }
+            // Post-processing (bloom, colour grading, vignette): only when the project uses URP.
+            PostFx.Apply(c.camera, PostLook.Waterpark);
         }
 
         static T AddTo<T>(VolumeProfile profile) where T : VolumeComponent

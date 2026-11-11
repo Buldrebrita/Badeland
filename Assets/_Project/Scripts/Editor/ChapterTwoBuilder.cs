@@ -149,6 +149,8 @@ namespace Badeland.EditorTools
                 cam.backgroundColor = new Color(0.01f, 0.03f, 0.04f);
             }
 
+            PostFx.Apply(cam, PostLook.Inside);
+
             var startObject = new GameObject("Chapter Start");
             var start = startObject.AddComponent<ChapterStart>();
             start.spawnPoints = spawns.ToArray();

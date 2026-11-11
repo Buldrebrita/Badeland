@@ -25,3 +25,11 @@ Do this when you want the nicer look. It is a few clicks:
    *Initialize and Convert*. (Or just rebuild the scenes: the builders now repair materials for the active renderer.)
 5. Rebuild the scenes with the Badeland menu. The post-processing look is then created too.
 6. Commit the new `Assets/Settings` files with GitHub Desktop, so others get them.
+
+
+## The quick way (menu)
+
+`Badeland > Render > Switch to URP (glow look)` makes a URP asset (HDR, anti-aliasing, soft shadows, Forward+ so many
+coloured lights work) and sets it in Graphics and in every Quality level. Then rebuild the scenes from the Badeland menu:
+the builders repair the materials and add the post-processing (bloom, tone mapping, colour grading, vignette; the
+Chapter 2 rooms get a stronger, purple-blue "glow" look). `Badeland > Render > Switch back to the built-in renderer` undoes it.

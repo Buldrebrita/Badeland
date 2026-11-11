@@ -37,6 +37,11 @@ namespace Badeland.EditorTools
             Directory.CreateDirectory(Folder);
             string path = Folder + "/M_Badeland_Waterfall.mat";
             var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material != null && material.shader != Template().shader)
+            {
+                AssetDatabase.DeleteAsset(path); // made for the other render pipeline: make it again
+                material = null;
+            }
             if (material == null)
             {
                 material = new Material(Template());
@@ -336,13 +341,17 @@ namespace Badeland.EditorTools
 
         // What Unity puts on a new primitive in this project: valid for the active render pipeline.
         static Material _template;
+        static RenderPipelineAsset _templateFor;
 
         static Material Template()
         {
-            if (_template != null) return _template;
+            // Asked again after the render pipeline has been switched (built-in <-> URP), so it follows the change.
+            var pipeline = GraphicsSettings.currentRenderPipeline;
+            if (_template != null && _templateFor == pipeline) return _template;
 
             var probe = GameObject.CreatePrimitive(PrimitiveType.Cube);
             _template = probe.GetComponent<Renderer>().sharedMaterial;
+            _templateFor = pipeline;
             Object.DestroyImmediate(probe);
             return _template;
         }
